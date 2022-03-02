@@ -98,7 +98,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     }
 
     packets_read++;
-    printf("\rPackets Caught: %d", packets_read);
-    if (0)  // debug
+    if (1)  // debug
         print_packet(&packet);
+    else
+        printf("\rPackets Caught: %d", packets_read);
 }

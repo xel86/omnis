@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     }
 
     get_local_ip_addresses(device->name);
-    refresh_proc_pid_mapping();
+    refresh_proc_mappings();
 
     pcap_loop(handle, -1, packet_handler, NULL);
 

@@ -32,7 +32,13 @@ struct socket_fd {
     unsigned long inode; /* inode for the socket */
 };
 
-void refresh_proc_net_mapping();
+/* Refresh both /proc/%d/fd for all pid's and /proc/net/tcp & udp.
+ * Creates map that has a key representing the a hash of the source ip & port,
+ * and destination ip & port together. The values of the map are pointers to
+ * applications. */
+void refresh_proc_mappings();
+
+void refresh_proc_net_mapping(const char *filename);
 void handle_proc_net_line(const char *buffer);
 
 void refresh_proc_pid_mapping();
