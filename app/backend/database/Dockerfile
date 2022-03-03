@@ -1,0 +1,7 @@
+FROM postgres:14-alpine
+
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=omnis.
+ENV POSTGRES_DB=omnis
+
+COPY . .
