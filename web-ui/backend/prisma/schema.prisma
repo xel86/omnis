@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = ""
+}
+
+model Application {
+  id      Int       @id @default(autoincrement())
+  name    String    @unique
+  Session Session[]
+}
+
+model Session {
+  start         DateTime
+  applicationID Int
+  durationSec   Int
+  bytes         Int
+  pktTx         Int
+  pktRx         Int
+  pktTcp        Int
+  pktUdp        Int
+  application   Application @relation(fields: [applicationID], references: [id])
+
+  @@id([start, applicationID])
+}
