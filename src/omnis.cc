@@ -1,5 +1,8 @@
 #include <pcap.h>
 
+#include <chrono>
+#include <thread>
+
 #include "global.h"
 #include "list.h"
 #include "packet.h"
@@ -19,6 +22,20 @@ enum debug {
 struct program_state {
     enum debug debug;
 };
+
+void dummy_print_status() {
+    while (1) {
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        printf("\n[###################################]\n");
+        for (const auto &elem : g_application_map) {
+            if (elem.second->pkt_rx > 0 || elem.second->pkt_tx > 0) {
+                printf("[*] %s\n", elem.first.c_str());
+                printf("    rx: %llu tx: %llu\n", elem.second->pkt_rx,
+                       elem.second->pkt_tx);
+            }
+        }
+    }
+}
 
 int main(int argc, char **argv) {
     pcap_if_t *devices, *device;
@@ -50,6 +67,7 @@ int main(int argc, char **argv) {
     get_local_ip_addresses(device->name);
     refresh_proc_mappings();
 
+    std::thread print_update_loop(dummy_print_status);
     pcap_loop(handle, -1, packet_handler, NULL);
 
     return 0;

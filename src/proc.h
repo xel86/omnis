@@ -23,14 +23,11 @@
  */
 extern std::unordered_map<std::string, struct application *>
     g_packet_process_map;
-// extern std::map<std::string, unsigned long> packet_inode_udp;
 
-/* struct to represent socket file-descriptors under a process */
-struct socket_fd {
-    pid_t pid;           /* process PID that owns socket */
-    char *cmdline;       /* cmdline (name) of the process */
-    unsigned long inode; /* inode for the socket */
-};
+extern std::unordered_map<std::string, struct application *> g_application_map;
+
+/* Max length of hash key for g_packet_process_map */
+extern const int HASHKEYSIZE;
 
 /* Refresh both /proc/%d/fd for all pid's and /proc/net/tcp & udp.
  * Creates map that has a key representing the a hash of the source ip & port,

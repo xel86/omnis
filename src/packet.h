@@ -24,7 +24,7 @@ struct packet {
     time_t time;                /* Unix timestamp when packet was captured */
 };
 
-void print_packet(struct packet *packet);
+void print_packet(struct packet *packet, struct application *app);
 
 /*
  * Uses the previously found values from get_local_ip_addresses to determine if

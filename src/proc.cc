@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
@@ -10,8 +11,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <unordered_map>
+#include <unordered_set>
+
+extern int errno;
+
+const int HASHKEYSIZE = 92;  //(INET_ADDRSTRLEN * 2) + (5 * 2) + 1;
 
 std::unordered_map<std::string, struct application *> g_packet_process_map;
+std::unordered_map<std::string, struct application *> g_application_map;
 
 // temporary maps to use to combine into global g_packet_process_map
 std::unordered_map<std::string, unsigned long> temp_inode_map;
@@ -22,8 +29,18 @@ void refresh_proc_mappings() {
     refresh_proc_net_mapping("/proc/net/tcp");
     refresh_proc_net_mapping("/proc/net/udp");
     for (const auto &elem : temp_inode_map) {
-        g_packet_process_map[elem.first] = temp_process_map[elem.second];
+        auto found = temp_process_map.find(elem.second);
+        if (found != temp_process_map.end())
+            g_packet_process_map[elem.first] = found->second;
+        else
+            fprintf(stderr,
+                    "tried adding hash %s with no associated inode %lu\n",
+                    elem.first.c_str(), elem.second);
     }
+
+    /* Should we clear these? Perhaps reuse some for efficiency */
+    temp_inode_map.clear();
+    temp_process_map.clear();
 }
 
 /* Credit to nethogs for a lot of these ideas.
@@ -50,17 +67,16 @@ void handle_proc_net_line(const char *buffer) {
     sscanf(packed_dest, "%X", &dest_ip.s_addr);
 
     /* hash is sip:sport-dip:dport without the parentheses */
-    int hash_size = (INET_ADDRSTRLEN * 2) + (5 * 2) + 1;
-    char hash[hash_size];
-    char source_str[INET_ADDRSTRLEN], dest_str[INET_ADDRSTRLEN];
+    char hash[HASHKEYSIZE];
+    char source_str[50], dest_str[50];
 
-    inet_ntop(AF_INET, &source_ip, source_str, INET_ADDRSTRLEN - 1);
-    inet_ntop(AF_INET, &dest_ip, dest_str, INET_ADDRSTRLEN - 1);
+    inet_ntop(AF_INET, &source_ip, source_str, 49);
+    inet_ntop(AF_INET, &dest_ip, dest_str, 49);
 
-    snprintf(hash, hash_size, "%s:%d-%s:%d", source_str, source_port, dest_str,
-             dest_port);
+    snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", source_str, source_port,
+             dest_str, dest_port);
 
-    if (1)  // debug
+    if (0)  // debug
         printf("HASH: %s, for source %s:%d, dest %s:%d\n", hash, source_str,
                source_port, dest_str, dest_port);
 
@@ -70,7 +86,8 @@ void handle_proc_net_line(const char *buffer) {
 void refresh_proc_net_mapping(const char *filename) {
     FILE *proc_net = fopen(filename, "r");
     if (proc_net == NULL) {
-        fprintf(stderr, "Could not access %s, exiting.", filename);
+        fprintf(stderr, "Could not access %s, error: %s, exiting.", filename,
+                strerror(errno));
         exit(1);
     }
 
@@ -85,14 +102,16 @@ void refresh_proc_net_mapping(const char *filename) {
         }
     } while (!feof(proc_net));
 
-    free(proc_net);
+    fclose(proc_net);
 }
 
 void refresh_proc_pid_mapping() {
     DIR *proc = opendir("/proc");
 
     if (proc == NULL) {
-        fprintf(stderr, "Could not access the /proc directory, exiting.");
+        fprintf(stderr,
+                "Could not access the /proc directory, error: %s exiting.",
+                strerror(errno));
         std::exit(1);
     }
 
@@ -104,13 +123,13 @@ void refresh_proc_pid_mapping() {
             continue;
         }
     }
+    closedir(proc);
 
     if (0)  // debug
         for (const auto &elem : temp_process_map) {
             printf("[*] %s\n", elem.second->name);
             printf("    pid: %d inode: %lu\n", elem.second->pid, elem.first);
         }
-    free(proc);
 }
 
 int entry_is_pid_dir(dirent *entry) {
@@ -131,15 +150,26 @@ void handle_pid_dir(const char *pid) {
 
     DIR *fd_dir = opendir(fd_dir_name);
     if (fd_dir == NULL) {
-        fprintf(stderr,
-                "Could not access pid file descriptor directory %s, exiting",
-                fd_dir_name);
-        std::exit(1);
+        fprintf(
+            stderr,
+            "Could not access pid file descriptor directory %s, error: %s\n",
+            fd_dir_name, strerror(errno));
+        return;
     }
 
-    int has_socket = 0;
-    struct application *new_app =
-        (struct application *)malloc(sizeof(struct application));
+    int has_socket = 0, new_app = 0;
+    char *cmdline;
+    set_cmdline(&cmdline, pid);
+
+    struct application *app;
+    auto found = g_application_map.find(cmdline);
+    if (found != g_application_map.end()) {
+        app = found->second;
+        free(cmdline);
+        new_app = 0;
+    } else {
+        new_app = 1;
+    }
 
     dirent *entry;
     while ((entry = readdir(fd_dir))) {
@@ -162,24 +192,35 @@ void handle_pid_dir(const char *pid) {
             /* If this is the first socket found for the process, initalize
              * application values. If we have already found a socket for this
              * process, point its inode key to the same application. */
-            if (!has_socket) {
+            if (!has_socket && new_app) {
                 has_socket = 1;
-                new_app->pid = string_to_int(pid);
-                set_cmdline(&new_app->name, pid);
+
+                app = (struct application *)malloc(sizeof(struct application));
+                app->id = 0;
+                app->pkt_rx = 0;
+                app->pkt_tx = 0;
+                app->pkt_tcp = 0;
+                app->pkt_udp = 0;
+                app->pid = string_to_int(pid);
+                app->name = cmdline;
+
+                g_application_map[cmdline] = app;
             }
 
-            temp_process_map[inode] = new_app;
+            temp_process_map[inode] = app;
         }
     }
-    free(fd_dir);
+    closedir(fd_dir);
 
-    /* If no socket file descriptor found for process, free temp application */
-    if (!has_socket) {
-        free(new_app);
+    /* If no socket file descriptor found for process, free temp cmdline */
+    if (!has_socket && new_app) {
+        free(cmdline);
         return;
     }
 }
 
+/* sets target to the cmdline of the given pid. Allocates memory needed and
+ * appends null termination character. */
 void set_cmdline(char **target, const char *pid) {
     char path[40];
     size_t len = 15 + strlen(pid);
@@ -187,7 +228,8 @@ void set_cmdline(char **target, const char *pid) {
 
     FILE *cmdline_file = fopen(path, "r");
     if (cmdline_file == NULL) {
-        fprintf(stderr, "Could not open cmdline file for pid %s", pid);
+        fprintf(stderr, "Could not open cmdline file for pid %s, error: %s\n",
+                pid, strerror(errno));
         *target = (char *)malloc(1);
         (*target)[0] = '\0';
         return;
@@ -198,6 +240,8 @@ void set_cmdline(char **target, const char *pid) {
 
     size_t cmdline_len = strlen(buffer);
     set_executable_name(target, buffer, cmdline_len);
+
+    fclose(cmdline_file);
 }
 
 void set_executable_name(char **target, const char *cmdline, size_t len) {

@@ -32,8 +32,10 @@ void ip_list_push_back(struct ip_list **head, const struct in_addr ip) {
     cursor->next->next = NULL;
 }
 
-int ip_list_contains(struct ip_list *ip_list, const in_addr_t ip) {
-    struct ip_list *cursor = ip_list;
+int ip_list_contains(struct ip_list &ip_list, const in_addr_t ip) {
+    if (ip_list.ip_address.s_addr == ip) return 1;
+
+    struct ip_list *cursor = &ip_list;
     while (cursor != NULL) {
         if (cursor->ip_address.s_addr == ip) {
             return 1;

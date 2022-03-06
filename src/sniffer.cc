@@ -14,6 +14,20 @@
 
 #include "global.h"
 #include "packet.h"
+#include "proc.h"
+
+int is_dns_traffic(const struct packet *packet) {
+    /* DNS Packets will appear as UDP packets, but have no socket
+     * associated with it in /proc/net/udp. We must distinguish them somehow,
+     * they always come from port 53...
+     * https://stackoverflow.com/questions/7565300/identifying-dns-packets
+     */
+
+    if (packet->dest_port == 53 || packet->source_port == 53)
+        return 1;
+    else
+        return 0;
+}
 
 void get_local_ip_addresses(const char *device_name) {
     struct ifaddrs *interface_addresses, *ifaddress;
@@ -66,7 +80,6 @@ void handle_udp_packet(struct packet *packet, const u_char *buffer,
     packet->dest_port = ntohs(udp_header->dest);
 }
 
-int packets_read = 0;
 void packet_handler(u_char *args, const struct pcap_pkthdr *header,
                     const u_char *buffer) {
     // skip over ethernet header ( always 14 bytes ) and use ip header
@@ -88,18 +101,50 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
 
         case IPPROTO_UDP:
             handle_udp_packet(&packet, buffer, offset);
+            if (is_dns_traffic(&packet)) return;
+
             break;
 
         default:
             if (0)  // debug
                 printf("\n!! Got Unknown Packet With Protocal Number %d !!\n",
                        ip_header->protocol);
-            break;
+            return;
     }
 
-    packets_read++;
-    if (1)  // debug
-        print_packet(&packet);
+    char hash[HASHKEYSIZE];
+    char sip[50], dip[50];
+    strcpy(sip, inet_ntoa(packet.source_ip));
+    strcpy(dip, inet_ntoa(packet.dest_ip));
+
+    if (packet.direction == OUTGOING_DIRECTION)
+        snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", sip, packet.source_port, dip,
+                 packet.dest_port);
     else
-        printf("\rPackets Caught: %d", packets_read);
+        snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", dip, packet.dest_port, sip,
+                 packet.source_port);
+
+    auto found = g_packet_process_map.find(hash);
+    if (found == g_packet_process_map.end()) {
+        refresh_proc_mappings();
+        found = g_packet_process_map.find(hash);
+    }
+
+    struct application *app;
+    if (found != g_packet_process_map.end()) {
+        app = found->second;
+        if (packet.direction == OUTGOING_DIRECTION)
+            app->pkt_tx += packet.len;
+        else if (packet.direction == INCOMING_DIRECTION)
+            app->pkt_rx += packet.len;
+    } else if (0) {  // debug
+        printf("Unknown Application Found!\n");
+        print_packet(&packet, NULL);
+    }
+
+    if (0) {  // debug
+        if (ip_header->protocol == IPPROTO_TCP ||
+            ip_header->protocol == IPPROTO_UDP)
+            print_packet(&packet, app);
+    }
 }
