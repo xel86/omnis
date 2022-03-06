@@ -16,8 +16,6 @@ struct application {
     time_t start_time;         /* timestamp for when application detected */
 };
 
-int get_application_name(struct application *app, int pid);
-
 void cleanup_application(struct application *app);
 
 #endif

@@ -24,24 +24,34 @@
 extern std::unordered_map<std::string, struct application *>
     g_packet_process_map;
 
+/* Instead of a packet hash being the key, this map has each applications name
+ * from a pruned cmdline as a key. */
 extern std::unordered_map<std::string, struct application *> g_application_map;
 
-/* Max length of hash key for g_packet_process_map */
+/* Max length of packet hash key for g_packet_process_map */
 extern const int HASHKEYSIZE;
 
 /* Refresh both /proc/%d/fd for all pid's and /proc/net/tcp & udp.
  * Creates map that has a key representing the a hash of the source ip & port,
  * and destination ip & port together. The values of the map are pointers to
- * applications. */
+ * applications. Results update g_packet_process_map*/
 void refresh_proc_mappings();
 
+/* Refresh either /proc/net/tcp or /proc/net/udp */
 void refresh_proc_net_mapping(const char *filename);
 void handle_proc_net_line(const char *buffer);
 
+/* Refresh all file descriptors in each pid folder in /proc */
 void refresh_proc_pid_mapping();
 int entry_is_pid_dir(dirent *entry);
 void handle_pid_dir(const char *pid);
+
+/* Allocates and sets the value of target to the cmdline of the pid */
 void set_cmdline(char **target, const char *pid);
+
+/* Allocates and sets the value of target to a pruned cmdline of the pid.
+ * The prunded cmdline only uses the name of the binary executable.
+ * "/usr/bin/omnis --debug" -> "omnis" */
 void set_executable_name(char **target, const char *cmdline, size_t len);
 
 unsigned long string_to_ulong(const char *ptr);

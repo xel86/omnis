@@ -12,9 +12,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "global.h"
+#include "list.h"
 #include "packet.h"
 #include "proc.h"
+
+struct ip_list *g_local_ip_list;
 
 int is_dns_traffic(const struct packet *packet) {
     /* DNS Packets will appear as UDP packets, but have no socket

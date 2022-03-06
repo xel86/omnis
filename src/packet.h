@@ -24,6 +24,7 @@ struct packet {
     time_t time;                /* Unix timestamp when packet was captured */
 };
 
+/* Prints packet information, primarly intended for debug purposes. */
 void print_packet(struct packet *packet, struct application *app);
 
 /*

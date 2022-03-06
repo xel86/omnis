@@ -11,7 +11,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <unordered_map>
-#include <unordered_set>
 
 extern int errno;
 
@@ -57,7 +56,10 @@ void handle_proc_net_line(const char *buffer) {
                "%*X:%*X %*X:%*X %*X %*d %*d %ld %*512s\n",
                packed_source, &source_port, packed_dest, &dest_port, &inode);
 
-    assert(matches == 5);
+    if (matches != 5) {
+        fprintf(stderr, "Malformed line buffer from handle_proc_net_line\n");
+        return;
+    }
 
     /* Don't update map if the socket is in TIME_WAIT state. */
     if (inode == 0) return;
@@ -66,7 +68,7 @@ void handle_proc_net_line(const char *buffer) {
     sscanf(packed_source, "%X", &source_ip.s_addr);
     sscanf(packed_dest, "%X", &dest_ip.s_addr);
 
-    /* hash is sip:sport-dip:dport without the parentheses */
+    /* packet hash is sip:sport-dip:dport */
     char hash[HASHKEYSIZE];
     char source_str[50], dest_str[50];
 
@@ -124,12 +126,6 @@ void refresh_proc_pid_mapping() {
         }
     }
     closedir(proc);
-
-    if (0)  // debug
-        for (const auto &elem : temp_process_map) {
-            printf("[*] %s\n", elem.second->name);
-            printf("    pid: %d inode: %lu\n", elem.second->pid, elem.first);
-        }
 }
 
 int entry_is_pid_dir(dirent *entry) {

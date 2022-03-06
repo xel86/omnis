@@ -5,9 +5,9 @@
 #include <cstdio>
 #include <string>
 
-#include "global.h"
 #include "list.h"
 #include "proc.h"
+#include "sniffer.h"
 
 enum direction find_packet_direction(struct packet *packet) {
     in_addr_t source_ip = packet->source_ip.s_addr;

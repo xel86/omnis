@@ -3,7 +3,6 @@
 #include <chrono>
 #include <thread>
 
-#include "global.h"
 #include "list.h"
 #include "packet.h"
 #include "proc.h"
