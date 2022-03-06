@@ -1,6 +1,11 @@
+export interface Application {
+  id: number;
+  name: string;
+}
+
 export interface Session {
   start: Date;
-  duration: number;
+  durationSec: number;
   applicationID: number;
   bytes: number;
   pktTx: number;
@@ -8,4 +13,9 @@ export interface Session {
   pktTotal: number;
   pktTcp: number;
   pktUdp: number;
+}
+
+export interface AppSession {
+  application: Application;
+  sessions: Session[];
 }

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  @apply bg-gray-100 overflow-hidden;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -14,4 +18,16 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.input-datetime {
+  @apply p-2 rounded-lg shadow-md min-w-max
+  dark:bg-gray-600 dark:text-white;
+}
+
+.button-primary {
+  @apply flex items-center bg-blue-600 text-white px-3 rounded-lg font-bold border-blue-600 border-2 transition-all
+            hover:bg-white hover:text-blue-600 hover:border-blue-600
+            dark:bg-blue-800 dark:border-blue-800
+            hover:dark:text-blue-600 hover:dark:bg-white hover:dark:border-white;
 }
