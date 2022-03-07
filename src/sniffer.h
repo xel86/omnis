@@ -5,6 +5,13 @@
 
 #include "packet.h"
 
+struct unresolved_buffer {
+    unsigned long long pkt_rx; /* packets received in bytes */
+    unsigned long long pkt_tx; /* packets transmitted in bytes */
+    int pkt_tcp;               /* number of tcp packets */
+    int pkt_udp;               /* number of udp packets */
+};
+
 /* Global linked list of all local ip addresses for the target device */
 extern struct ip_list *g_local_ip_list;
 
@@ -15,8 +22,9 @@ void handle_tcp_packet(struct packet *packet, const u_char *buffer, int offset);
 
 void handle_udp_packet(struct packet *packet, const u_char *buffer, int offset);
 
-/* Returns 1 if a UDP packet is a DNS related packet, returns 0 otherwise */
-int is_dns_traffic(const struct packet *packet);
+/* Returns 1 if a UDP packet is a packet we should ignore, returns 0 otherwise
+ * Packets to be ignored include DNS, MDNS , and SSDP traffic. */
+int should_disregard_packet(const struct packet *packet);
 
 /*
  * Function handler that is hooked with libpcap to be executed everytime a

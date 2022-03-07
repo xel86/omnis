@@ -48,16 +48,19 @@ void print_packet(struct packet *packet, struct application *app) {
             break;
     }
 
-    printf("\n######### %s %s #########\n", direction_string, protocol_string);
-    printf("sport: %hu dport: %hu\n", packet->source_port, packet->dest_port);
-    printf("sip: %s ", inet_ntoa(packet->source_ip));
-    printf("dip: %s\n", inet_ntoa(packet->dest_ip));
-    printf("length: %d header len: %d\n", packet->len, packet->header_len);
-    printf("time: %lld\n", (long long)packet->time);
+    fprintf(stderr, "\n######### %s %s #########\n", direction_string,
+            protocol_string);
+    fprintf(stderr, "sport: %hu dport: %hu\n", packet->source_port,
+            packet->dest_port);
+    fprintf(stderr, "sip: %s ", inet_ntoa(packet->source_ip));
+    fprintf(stderr, "dip: %s\n", inet_ntoa(packet->dest_ip));
+    fprintf(stderr, "length: %d header len: %d\n", packet->len,
+            packet->header_len);
+    fprintf(stderr, "time: %lld\n", (long long)packet->time);
 
     if (app == NULL) {
-        printf("FROM APPLICATION: Unknown (for now!)\n");
+        fprintf(stderr, "FROM APPLICATION: Unknown (for now!)\n");
     } else {
-        printf("FROM APPLICATION: %s\n", app->name);
+        fprintf(stderr, "FROM APPLICATION: %s\n", app->name);
     }
 }

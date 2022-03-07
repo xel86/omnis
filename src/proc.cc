@@ -33,8 +33,9 @@ void refresh_proc_mappings() {
             g_packet_process_map[elem.first] = found->second;
         else
             fprintf(stderr,
-                    "tried adding hash %s with no associated inode %lu\n",
-                    elem.first.c_str(), elem.second);
+                    "Could not find socket with inode %lu in any corresponding "
+                    "/proc/pid/fd, with hash %s\n",
+                    elem.second, elem.first.c_str());
     }
 
     /* Should we clear these? Perhaps reuse some for efficiency */

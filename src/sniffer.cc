@@ -16,19 +16,25 @@
 #include "packet.h"
 #include "proc.h"
 
+std::unordered_map<std::string, struct packet> unresolved_packets;
 struct ip_list *g_local_ip_list;
 
-int is_dns_traffic(const struct packet *packet) {
-    /* DNS Packets will appear as UDP packets, but have no socket
+int should_disregard_packet(const struct packet *packet) {
+    /* DNS & MDNS Packets will appear as UDP packets, but have no socket
      * associated with it in /proc/net/udp. We must distinguish them somehow,
-     * they always come from port 53...
+     * they always come from port 53 or 5353...
      * https://stackoverflow.com/questions/7565300/identifying-dns-packets
      */
+    if (packet->dest_port == 53 || packet->source_port == 53) return 1;
+    if (packet->dest_port == 5353 && packet->source_port == 5353) return 1;
 
-    if (packet->dest_port == 53 || packet->source_port == 53)
-        return 1;
-    else
-        return 0;
+    /* SSDP packets are in the same situation as above.
+     * They are exclusive to UDP packets on port 1900.
+     * https://wiki.wireshark.org/SSDP
+     */
+    if (packet->dest_port == 1900 || packet->source_port == 1900) return 1;
+
+    return 0;
 }
 
 void get_local_ip_addresses(const char *device_name) {
@@ -103,7 +109,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
 
         case IPPROTO_UDP:
             handle_udp_packet(&packet, buffer, offset);
-            if (is_dns_traffic(&packet)) return;
+            if (should_disregard_packet(&packet)) return;
 
             break;
 
@@ -128,21 +134,31 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
 
     auto found = g_packet_process_map.find(hash);
     if (found == g_packet_process_map.end()) {
-        refresh_proc_mappings();
-        found = g_packet_process_map.find(hash);
+        /* Keep track of packets that fail to resolve to an application after a
+         * single proc refresh. Prevents the same traffic stream from
+         * continously triggering refreshing the proc mappings. */
+        if (unresolved_packets.find(hash) == unresolved_packets.end()) {
+            refresh_proc_mappings();
+            found = g_packet_process_map.find(hash);
+
+            if (found == g_packet_process_map.end()) {
+                unresolved_packets[hash] = packet;
+                fprintf(stderr, "Added unresolved packet:");
+                print_packet(&packet, NULL);
+                return;
+            }
+        } else {
+            return;
+        }
     }
 
+    /* After this point, the packet successfully resolved to an application */
     struct application *app;
-    if (found != g_packet_process_map.end()) {
-        app = found->second;
-        if (packet.direction == OUTGOING_DIRECTION)
-            app->pkt_tx += packet.len;
-        else if (packet.direction == INCOMING_DIRECTION)
-            app->pkt_rx += packet.len;
-    } else if (0) {  // debug
-        printf("Unknown Application Found!\n");
-        print_packet(&packet, NULL);
-    }
+    app = found->second;
+    if (packet.direction == OUTGOING_DIRECTION)
+        app->pkt_tx += packet.len;
+    else if (packet.direction == INCOMING_DIRECTION)
+        app->pkt_rx += packet.len;
 
     if (0) {  // debug
         if (ip_header->protocol == IPPROTO_TCP ||
