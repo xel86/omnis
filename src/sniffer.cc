@@ -16,8 +16,28 @@
 #include "packet.h"
 #include "proc.h"
 
-std::unordered_map<std::string, struct packet> unresolved_packets;
+std::unordered_map<std::string, struct unresolved_buffer> unresolved_packets;
 struct ip_list *g_local_ip_list;
+
+void try_resolve_packets() {
+    if (unresolved_packets.empty()) return;
+
+    refresh_proc_mappings();
+    for (const auto &e : unresolved_packets) {
+        auto found = g_packet_process_map.find(e.first);
+        if (found != g_packet_process_map.end()) {
+            found->second->pkt_tx += e.second.pkt_tx;
+            found->second->pkt_rx += e.second.pkt_rx;
+
+            fprintf(stderr, "Connected packets to %s\n", found->second->name);
+        } else {
+            fprintf(stderr, "Couldn't connect packets with hash %s\n",
+                    e.first.c_str());
+        }
+    }
+
+    unresolved_packets.clear();
+}
 
 int should_disregard_packet(const struct packet *packet) {
     /* DNS & MDNS Packets will appear as UDP packets, but have no socket
@@ -88,6 +108,7 @@ void handle_udp_packet(struct packet *packet, const u_char *buffer,
     packet->dest_port = ntohs(udp_header->dest);
 }
 
+unsigned long long resolve_interval = 0;
 void packet_handler(u_char *args, const struct pcap_pkthdr *header,
                     const u_char *buffer) {
     // skip over ethernet header ( always 14 bytes ) and use ip header
@@ -132,24 +153,27 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", dip, packet.dest_port, sip,
                  packet.source_port);
 
+    /* Every 10000 packets captured we try to resolve any unresolved packets.
+     * This is completely arbitrary, and something else could be better.
+     * Could a timed interval potentially be better? */
+    if (resolve_interval > 10000) {
+        try_resolve_packets();
+        resolve_interval = 0;
+    }
+
     auto found = g_packet_process_map.find(hash);
     if (found == g_packet_process_map.end()) {
-        /* Keep track of packets that fail to resolve to an application after a
-         * single proc refresh. Prevents the same traffic stream from
-         * continously triggering refreshing the proc mappings. */
-        if (unresolved_packets.find(hash) == unresolved_packets.end()) {
-            refresh_proc_mappings();
-            found = g_packet_process_map.find(hash);
+        /* Packets that do not already have an associated application will be
+         * put into the unresolved_packets map which will act as a buffer for a
+         * connection dictated by its packet hash. This is to reduce the amount
+         * of times we call refresh_proc_mappings() overall. */
+        if (packet.direction == OUTGOING_DIRECTION)
+            unresolved_packets[hash].pkt_tx += packet.len;
+        else if (packet.direction == INCOMING_DIRECTION)
+            unresolved_packets[hash].pkt_rx += packet.len;
 
-            if (found == g_packet_process_map.end()) {
-                unresolved_packets[hash] = packet;
-                fprintf(stderr, "Added unresolved packet:");
-                print_packet(&packet, NULL);
-                return;
-            }
-        } else {
-            return;
-        }
+        resolve_interval++;
+        return;
     }
 
     /* After this point, the packet successfully resolved to an application */
@@ -159,6 +183,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         app->pkt_tx += packet.len;
     else if (packet.direction == INCOMING_DIRECTION)
         app->pkt_rx += packet.len;
+
+    resolve_interval++;
 
     if (0) {  // debug
         if (ip_header->protocol == IPPROTO_TCP ||
