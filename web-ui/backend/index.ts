@@ -59,8 +59,8 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
       Session: {
         where: {
           start: {
-            gte: new Date(start),
-            lt: new Date(end),
+            gte: start,
+            lt: end,
           },
         },
       },
@@ -76,8 +76,9 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
     const sessions: Session[] = val.Session.map((s) => ({
       start: s.start,
       durationSec: s.durationSec,
-      applicationID: s.applicationID,
-      bytes: s.bytes,
+      applicationId: s.applicationId,
+      bytesTx: s.bytesTx,
+      bytesRx: s.bytesRx,
       pktTx: s.pktTx,
       pktRx: s.pktRx,
       pktTotal: s.pktTx + s.pktRx,

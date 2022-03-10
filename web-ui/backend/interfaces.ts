@@ -4,13 +4,13 @@ export interface Application {
 }
 
 export interface Session {
-  start: Date;
+  start: number;
   durationSec: number;
-  applicationID: number;
-  bytes: number;
+  applicationId: number;
+  bytesTx: number;
+  bytesRx: number;
   pktTx: number;
   pktRx: number;
-  pktTotal: number;
   pktTcp: number;
   pktUdp: number;
 }

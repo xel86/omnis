@@ -17,15 +17,16 @@ model Application {
 }
 
 model Session {
-  start         DateTime
-  applicationID Int
+  start         Int
+  applicationId Int
   durationSec   Int
-  bytes         Int
+  bytesTx       Int
+  bytesRx       Int
   pktTx         Int
   pktRx         Int
   pktTcp        Int
   pktUdp        Int
-  application   Application @relation(fields: [applicationID], references: [id])
+  application   Application @relation(fields: [applicationId], references: [id])
 
-  @@id([start, applicationID])
+  @@id([start, applicationId])
 }
