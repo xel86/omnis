@@ -10,7 +10,7 @@ CC := clang++
 CPPFLAGS := -Iinclude -MMD -MP
 CFLAGS   := -g -Wall
 LDFLAGS  := -Llib
-LDLIBS   := -lpcap
+LDLIBS   := -lpcap -lpthread
 
 .PHONY: all clean
 

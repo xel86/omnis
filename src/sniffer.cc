@@ -19,7 +19,7 @@
 std::unordered_map<std::string, struct unresolved_buffer> unresolved_packets;
 struct ip_list *g_local_ip_list;
 
-void try_resolve_packets() {
+inline void try_resolve_packets() {
     if (unresolved_packets.empty()) return;
 
     refresh_proc_mappings();
@@ -31,8 +31,10 @@ void try_resolve_packets() {
 
             fprintf(stderr, "Connected packets to %s\n", found->second->name);
         } else {
-            fprintf(stderr, "Couldn't connect packets with hash %s\n",
-                    e.first.c_str());
+            fprintf(
+                stderr,
+                "Couldn't connect packets (tx: %llu rx: %llu) with hash %s\n",
+                e.second.pkt_tx, e.second.pkt_rx, e.first.c_str());
         }
     }
 
@@ -53,6 +55,9 @@ int should_disregard_packet(const struct packet *packet) {
      * https://wiki.wireshark.org/SSDP
      */
     if (packet->dest_port == 1900 || packet->source_port == 1900) return 1;
+
+    /* NTP (Network Time Protocol) packets, used for time synchronization. */
+    if (packet->dest_port == 123 && packet->source_port == 123) return 1;
 
     return 0;
 }
@@ -142,7 +147,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     }
 
     char hash[HASHKEYSIZE];
-    char sip[50], dip[50];
+    char sip[INET6_ADDRSTRLEN], dip[INET6_ADDRSTRLEN];
     strcpy(sip, inet_ntoa(packet.source_ip));
     strcpy(dip, inet_ntoa(packet.dest_ip));
 
@@ -153,10 +158,10 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", dip, packet.dest_port, sip,
                  packet.source_port);
 
-    /* Every 10000 packets captured we try to resolve any unresolved packets.
+    /* Every 500 packets captured we try to resolve any unresolved packets.
      * This is completely arbitrary, and something else could be better.
      * Could a timed interval potentially be better? */
-    if (resolve_interval > 10000) {
+    if (resolve_interval > 500) {
         try_resolve_packets();
         resolve_interval = 0;
     }
