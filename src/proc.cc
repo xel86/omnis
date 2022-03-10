@@ -27,6 +27,7 @@ void refresh_proc_mappings() {
     refresh_proc_pid_mapping();
     refresh_proc_net_mapping("/proc/net/tcp");
     refresh_proc_net_mapping("/proc/net/udp");
+    refresh_proc_net_mapping("/proc/net/raw");
     for (const auto &elem : temp_inode_map) {
         auto found = temp_process_map.find(elem.second);
         if (found != temp_process_map.end())
@@ -233,12 +234,25 @@ void set_cmdline(char **target, const char *pid) {
     }
 
     char buffer[8192];
-    fgets(buffer, sizeof(buffer), cmdline_file);
+    fgets(buffer, sizeof(buffer) - 1, cmdline_file);
 
     size_t cmdline_len = strlen(buffer);
     set_executable_name(target, buffer, cmdline_len);
 
     fclose(cmdline_file);
+}
+
+const char *interpreted[] = {"python", "python3"};
+int is_interpreted(const char *cmp, size_t len) {
+    /* checks is the length of the constant interpreted array above. */
+    int checks = 2;
+    for (int i = 0; i < checks; i++) {
+        if (strncmp(cmp, interpreted[i], len) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 void set_executable_name(char **target, const char *cmdline, size_t len) {
@@ -254,11 +268,30 @@ void set_executable_name(char **target, const char *cmdline, size_t len) {
             continue;
         }
 
-        if (*cmdline == ' ') break;
+        if (*cmdline == ' ') {
+            break;
+        }
 
         temp_name[new_len] = *cmdline;
         new_len++;
         cmdline++;
+    }
+
+    /* Programs that use python, and other interpreted languages, to run will
+     * have a slightly ambigious cmdline which we want to avoid. For example
+     * streamlink's cmdline /usr/bin/python\0/usr/bin/streamlink has a null
+     * character seperator instead of a space. So we skip the potential null
+     * character and check to see if the initial executable name is an
+     * interpreted language, like python, and if so set the executable name
+     * again on what remains. This method will work for both space and null
+     * character seperators. */
+    cmdline++;
+    if (is_interpreted(temp_name, new_len) &&
+        (*cmdline != '\0' || *cmdline != ' ')) {
+        for (int i = 0; i < new_len; i++) temp_name[i] = '\0';
+
+        set_executable_name(target, cmdline, len - new_len);
+        return;
     }
 
     temp_name[new_len] = '\0';

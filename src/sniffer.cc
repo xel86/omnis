@@ -56,6 +56,9 @@ int should_disregard_packet(const struct packet *packet) {
      */
     if (packet->dest_port == 1900 || packet->source_port == 1900) return 1;
 
+    /* NTP (Network Time Protocol) packets, used for time synchronization. */
+    if (packet->dest_port == 123 && packet->source_port == 123) return 1;
+
     return 0;
 }
 

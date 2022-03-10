@@ -25,15 +25,17 @@ struct program_state {
 
 void dummy_print_status() {
     while (1) {
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        int interval = 5;
+        std::this_thread::sleep_for(std::chrono::seconds(interval));
         printf("\n[###################################]\n");
         for (const auto &elem : g_application_map) {
             char rx[15], tx[15];
             if (elem.second->pkt_rx > 0 || elem.second->pkt_tx > 0) {
                 printf("[*] %s\n", elem.first.c_str());
-                printf("    rx: %s tx: %s\n",
-                       bytes_to_human_readable(rx, elem.second->pkt_rx, 10),
-                       bytes_to_human_readable(tx, elem.second->pkt_tx, 10));
+                printf(
+                    "    rx: %s tx: %s\n",
+                    bytes_to_human_readable(rx, elem.second->pkt_rx, interval),
+                    bytes_to_human_readable(tx, elem.second->pkt_tx, interval));
 
                 elem.second->pkt_rx = 0;
                 elem.second->pkt_tx = 0;
