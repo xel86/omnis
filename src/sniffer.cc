@@ -147,7 +147,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     }
 
     char hash[HASHKEYSIZE];
-    char sip[50], dip[50];
+    char sip[INET6_ADDRSTRLEN], dip[INET6_ADDRSTRLEN];
     strcpy(sip, inet_ntoa(packet.source_ip));
     strcpy(dip, inet_ntoa(packet.dest_ip));
 

@@ -14,7 +14,9 @@
 
 extern int errno;
 
-const int HASHKEYSIZE = 92;  //(INET_ADDRSTRLEN * 2) + (5 * 2) + 1;
+/* ipv6 size + seperator, max 5 digit port number + seperator,
+ * ipv6 size + seperator, max 5 digit port number + null char. */
+const int HASHKEYSIZE = (INET6_ADDRSTRLEN + 5) + 1 + (INET6_ADDRSTRLEN + 5) + 1;
 
 std::unordered_map<std::string, struct application *> g_packet_process_map;
 std::unordered_map<std::string, struct application *> g_application_map;
@@ -72,17 +74,17 @@ void handle_proc_net_line(const char *buffer) {
 
     /* packet hash is sip:sport-dip:dport */
     char hash[HASHKEYSIZE];
-    char source_str[50], dest_str[50];
+    char source_str[INET6_ADDRSTRLEN], dest_str[INET6_ADDRSTRLEN];
 
-    inet_ntop(AF_INET, &source_ip, source_str, 49);
-    inet_ntop(AF_INET, &dest_ip, dest_str, 49);
+    inet_ntop(AF_INET, &source_ip, source_str, INET6_ADDRSTRLEN);
+    inet_ntop(AF_INET, &dest_ip, dest_str, INET6_ADDRSTRLEN);
 
     snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", source_str, source_port,
              dest_str, dest_port);
 
     if (0)  // debug
-        printf("HASH: %s, for source %s:%d, dest %s:%d\n", hash, source_str,
-               source_port, dest_str, dest_port);
+        printf("HASHKEYSIZE: %d HASH: %s, for source %s:%d, dest %s:%d\n",
+               HASHKEYSIZE, hash, source_str, source_port, dest_str, dest_port);
 
     temp_inode_map[hash] = inode;
 }
