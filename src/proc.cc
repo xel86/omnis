@@ -72,6 +72,23 @@ void handle_proc_net_line(const char *buffer) {
     sscanf(packed_source, "%X", &source_ip.s_addr);
     sscanf(packed_dest, "%X", &dest_ip.s_addr);
 
+    /* Unconnected UDP streams will appear in /proc/net/udp as having a local
+     * address of 0.0.0.0:port and a rem address of 0.0.0.0:0 making it
+     * impossible to identify these streams while capturing packets with our
+     * normal packet hash method. These streams will uniquely have only the UDP
+     * port number as the key as opposed to the entire packet hash. Will only be
+     * accessed by udp packets. */
+    if (source_ip.s_addr == 0 && dest_ip.s_addr == 0 && source_port != 0) {
+        char port_hash[10];
+        snprintf(port_hash, 10, "UDP-%d", source_port);
+
+        if (0)  // debug
+            printf("Adding unconnected UDP Stream with port %d\n", source_port);
+
+        temp_inode_map[port_hash] = inode;
+        return;
+    }
+
     /* packet hash is sip:sport-dip:dport */
     char hash[HASHKEYSIZE];
     char source_str[INET6_ADDRSTRLEN], dest_str[INET6_ADDRSTRLEN];

@@ -166,7 +166,22 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         resolve_interval = 0;
     }
 
-    auto found = g_packet_process_map.find(hash);
+    // TODO: Can we somehow avoid calling find twice for connected UDP sockets?
+    auto found = g_packet_process_map.end();
+    if (packet.protocol == IPPROTO_UDP) {
+        char port_hash[10];
+        if (packet.direction == OUTGOING_DIRECTION)
+            snprintf(port_hash, 10, "UDP-%d", packet.source_port);
+        else
+            snprintf(port_hash, 10, "UDP-%d", packet.dest_port);
+
+        found = g_packet_process_map.find(port_hash);
+    }
+
+    if (found == g_packet_process_map.end()) {
+        found = g_packet_process_map.find(hash);
+    }
+
     if (found == g_packet_process_map.end()) {
         /* Packets that do not already have an associated application will be
          * put into the unresolved_packets map which will act as a buffer for a
