@@ -7,6 +7,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as ini from 'ini';
 import { Application as App, Session, AppSession } from './interfaces';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 if (process.env.NODE_ENV === 'production') console.log = () => {};
 
@@ -54,43 +55,105 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
     });
   }
 
-  const app_session = await prisma.application.findMany({
-    include: {
-      Session: {
-        where: {
-          start: {
-            gte: start,
-            lt: end,
+  let data: AppSession[] = [];
+  try {
+    const app_session = await prisma.application.findMany({
+      include: {
+        Session: {
+          where: {
+            start: {
+              gte: start,
+              lt: end,
+            },
+          },
+          orderBy: {
+            start: 'asc',
           },
         },
       },
-    },
-  });
+    });
 
-  const data: AppSession[] = app_session.map((val) => {
-    const application: App = {
-      id: val.id,
-      name: val.name,
-    };
+    data = app_session.map((val) => {
+      const application: App = {
+        id: val.id,
+        name: val.name,
+        colorHex: val.colorHex,
+      };
 
-    const sessions: Session[] = val.Session.map((s) => ({
-      start: s.start,
-      durationSec: s.durationSec,
-      applicationId: s.applicationId,
-      bytesTx: s.bytesTx,
-      bytesRx: s.bytesRx,
-      pktTx: s.pktTx,
-      pktRx: s.pktRx,
-      pktTotal: s.pktTx + s.pktRx,
-      pktTcp: s.pktTcp,
-      pktUdp: s.pktUdp,
-    }));
+      const sessions: Session[] = val.Session.map((s) => ({
+        start: s.start,
+        durationSec: s.durationSec,
+        applicationId: s.applicationId,
+        bytesTx: s.bytesTx,
+        bytesRx: s.bytesRx,
+        pktTx: s.pktTx,
+        pktRx: s.pktRx,
+        pktTotal: s.pktTx + s.pktRx,
+        pktTcp: s.pktTcp,
+        pktUdp: s.pktUdp,
+      }));
 
-    return { application, sessions };
-  });
+      return { application, sessions };
+    });
+  } catch (e) {
+    if (e instanceof PrismaClientKnownRequestError) {
+      const errMsg = 'Error: ' + e.message + '\n' + e.meta;
+      console.log(errMsg);
+      return res
+        .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+        .send({ message: errMsg });
+    }
+  }
 
   return res.status(httpStatusCodes.OK).send({ data: data });
 });
+
+app.post(
+  '/applications',
+  async (req: Request<{}, {}, App[]>, res: Response): Promise<Response> => {
+    for (const app of req.body) {
+      if (!app.colorHex) app.colorHex = '';
+      try {
+        await prisma.application.create({ data: app });
+      } catch (e) {
+        if (e instanceof PrismaClientKnownRequestError) {
+          const errMsg = 'Error: ' + e.message + '\n' + e.meta;
+          console.log(errMsg);
+          return res
+            .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+            .send({ message: errMsg });
+        }
+      }
+    }
+
+    return res
+      .status(httpStatusCodes.OK)
+      .send({ message: 'Applications inserted successfully.' });
+  }
+);
+
+app.post(
+  '/sessions',
+  async (req: Request<{}, {}, Session[]>, res: Response): Promise<Response> => {
+    for (const app of req.body) {
+      try {
+        await prisma.session.create({ data: app });
+      } catch (e) {
+        if (e instanceof PrismaClientKnownRequestError) {
+          const errMsg = 'Error: ' + e.message + '\n' + e.meta;
+          console.log(errMsg);
+          return res
+            .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+            .send({ message: errMsg });
+        }
+      }
+    }
+
+    return res
+      .status(httpStatusCodes.OK)
+      .send({ message: 'Sessions inserted successfully.' });
+  }
+);
 
 try {
   app.listen(port, (): void => {

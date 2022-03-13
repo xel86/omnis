@@ -1,6 +1,7 @@
 export interface Application {
   id: number;
   name: string;
+  colorHex: string;
 }
 
 export interface Session {

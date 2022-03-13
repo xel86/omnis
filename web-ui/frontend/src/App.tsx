@@ -1,12 +1,18 @@
 import { Input } from 'reactstrap';
 import { MdApps, MdDarkMode, MdLightMode } from 'react-icons/md';
 import { useCallback, useEffect, useState } from 'react';
+import { Chart } from 'chart.js';
 import { AppSession, SessionTotal } from './interfaces';
 import PaneRx from './components/PaneRx';
 import PaneTx from './components/PaneTx';
 import LineChartAppDataUsage from './components/LineChartAppDataUsage';
+import BarChartAppDataUsagePerInterval from './components/BarChartAppDataUsageInterval';
 
 const MS_MINUTE = 60000;
+
+function randomHexColor(): string {
+  return '#' + ((Math.random() * 0xffffff) << 0).toString(16).padStart(6, '0');
+}
 
 function getDateTimeString(date: Date): string {
   const offset = date.getTimezoneOffset();
@@ -19,13 +25,12 @@ async function getData(
   end: Date
 ): Promise<AppSession[] | undefined> {
   const response: Response = await fetch(
-    process.env.REACT_APP_API_BASE_URL ??
-      'http://localhost:29687' +
-        '/data?' +
-        new URLSearchParams({
-          start: start.toISOString(),
-          end: end.toISOString(),
-        })
+    (process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:29687') +
+      '/data?' +
+      new URLSearchParams({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      })
   ).catch((err: Error) => {
     throw err;
   });
@@ -39,11 +44,9 @@ async function getData(
 
 function App() {
   const [render, rerender] = useState(false);
-  const [start, setStart] = useState(
-    new Date(new Date().getTime() - 5 * MS_MINUTE)
-  );
   const [end, setEnd] = useState(new Date());
-  const [isToPresent, setToPresent] = useState(true);
+  const [start, setStart] = useState(new Date(end.getTime() - 5 * MS_MINUTE));
+  const [isToPresent, setToPresent] = useState(false);
   const [appSessions, setAppSessions] = useState([] as AppSession[]);
   const [sessionTotal, setSessionTotal] = useState({
     bytesTx: 0,
@@ -53,6 +56,9 @@ function App() {
     pktTcp: 0,
     pktUdp: 0,
   } as SessionTotal);
+  const [appColor, setAppColor] = useState(
+    [] as { name: string; colorHex: string }[]
+  );
 
   useEffect(() => {
     const getDataIntervalId = setInterval(async () => {
@@ -60,7 +66,7 @@ function App() {
         setEnd(new Date());
         updateData();
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(getDataIntervalId);
   }, [start, end, isToPresent]);
@@ -68,6 +74,23 @@ function App() {
   const updateData = useCallback(async () => {
     const appSessions = await getData(start, end);
     if (appSessions) {
+      appSessions.forEach((as, idx) => {
+        if (as.application.colorHex.length === 0) {
+          let color = appColor.find(
+            (ac) => ac.name === as.application.name
+          )?.colorHex;
+
+          if (!color) {
+            color = randomHexColor();
+            const arr = appColor;
+            arr.push({ name: as.application.name, colorHex: color });
+            setAppColor(arr);
+          }
+
+          appSessions[idx].application.colorHex = color;
+        }
+      });
+
       setAppSessions(appSessions);
 
       const sessionTotal: SessionTotal = {
@@ -101,13 +124,15 @@ function App() {
 
   if (isDarkMode) {
     document.documentElement.classList.add('dark');
+    Chart.defaults.color = '#fff';
   } else {
     document.documentElement.classList.remove('dark');
+    Chart.defaults.color = '#666';
   }
 
   return (
     <div className="h-screen p-4 bg-gray-100 dark:bg-black">
-      <div className="h-full rounded-lg bg-white dark:bg-gray-800 flex flex-col">
+      <div className="content-pane">
         <div className="w-full p-4 flex">
           <Input
             className="input-datetime"
@@ -140,8 +165,8 @@ function App() {
               'text-sm min-w-max ml-2 px-4 rounded-lg font-semibold transition-all shadow-md ' +
               'dark:text-white ' +
               (isToPresent
-                ? 'bg-blue-600 text-white dark:bg-gray-100 dark:text-blue-600'
-                : 'text-blue-600 hover:bg-gray-100 hover:text-blue-600 dark:hover:text-blue-600')
+                ? 'bg-blue-600 text-white dark:bg-gray-600 dark:text-white'
+                : 'text-blue-600 hover:bg-gray-100 hover:text-blue-600 dark:hover:text-white dark:hover:bg-gray-600')
             }
             onClick={() => {
               setToPresent(!isToPresent);
@@ -180,7 +205,7 @@ function App() {
           </div>
         </div>
 
-        <div className="w-full h-full p-4 pt-0 grid grid-cols-4 gap-4 auto-rows-min overflow-y-scroll">
+        <div className="content-grid">
           <div className="col-span-2">
             <PaneTx bytesTx={sessionTotal.bytesTx} pktTx={sessionTotal.pktTx} />
           </div>
@@ -189,10 +214,22 @@ function App() {
           </div>
 
           <div className="col-span-4">
-            <LineChartAppDataUsage appSessions={appSessions} />
+            <LineChartAppDataUsage
+              appSessions={appSessions}
+              start={start}
+              end={end}
+              isDarkMode={isDarkMode}
+            />
           </div>
 
-          <div className="col-span-4"></div>
+          <div className="col-span-4">
+            <BarChartAppDataUsagePerInterval
+              appSessions={appSessions}
+              start={start}
+              end={end}
+              isDarkMode={isDarkMode}
+            />
+          </div>
 
           <div className="col-span-2"></div>
           <div className="col-span-2"></div>

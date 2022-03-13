@@ -11,9 +11,10 @@ datasource db {
 }
 
 model Application {
-  id      Int       @id @default(autoincrement())
-  name    String    @unique
-  Session Session[]
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  colorHex String    @default("")
+  Session  Session[]
 }
 
 model Session {

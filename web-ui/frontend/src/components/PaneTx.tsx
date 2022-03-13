@@ -40,8 +40,8 @@ function PaneTx(props: PaneTxProps) {
         </div>
 
         <div className="flex items-center space-x-2">
-          <div className="text-4xl font-bold text-right min-w-[4rem] xl:text-6xl">
-            {unitIndex == 0
+          <div className="text-4xl font-bold text-right min-w-[4rem] xl:text-5xl">
+            {unitIndex === 0
               ? convertToUnit(props.bytesTx, unitIndex)
               : convertToUnit(props.bytesTx, unitIndex).toFixed(2)}
           </div>

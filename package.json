@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "chartjs-plugin-colorschemes": "^0.4.0"
+  }
+}
