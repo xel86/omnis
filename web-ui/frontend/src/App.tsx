@@ -271,7 +271,7 @@ function App() {
                 className="button-primary font-bold"
                 onClick={() => setIsAppPaneOpen(!isAppPaneOpen)}
               >
-                <MdApps className="mr-1" size={20} /> 20 APPS
+                <MdApps className="mr-1" size={20} /> {apps.length} APPS
               </button>
             </div>
           </div>
@@ -359,7 +359,7 @@ function App() {
         <div className="absolute inset-0 h-full w-full flex justify-center items-center">
           <div className="app-pane">
             <button
-              className="absolute right-6"
+              className="absolute right-4 top-4"
               onClick={() => setIsAppPaneOpen(false)}
             >
               <IoMdClose />
