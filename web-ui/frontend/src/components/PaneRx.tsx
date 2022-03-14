@@ -1,27 +1,9 @@
 import { useState } from 'react';
-
-const UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+import { convertToUnit, UNITS } from '../units';
 
 interface PaneRxProps {
   bytesRx: number;
   pktRx: number;
-}
-
-function convertToUnit(bytes: number, unitIndex: number): number {
-  switch (unitIndex) {
-    case 0:
-      return bytes;
-    case 1:
-      return bytes / 1000;
-    case 2:
-      return bytes / 1000000;
-    case 3:
-      return bytes / 1000000000;
-    case 4:
-      return bytes / 1000000000000;
-    default:
-      return bytes;
-  }
 }
 
 function PaneRx(props: PaneRxProps) {

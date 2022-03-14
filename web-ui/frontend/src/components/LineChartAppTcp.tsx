@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AppSession, Session } from '../interfaces';
-import { convertToUnit, UNITS } from '../units';
 
 import Chart from 'chart.js/auto';
 import { ChartDataset } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-moment';
 
-interface LineChartAppDataUsageProps {
+interface LineChartAppTcp {
   appSessions: AppSession[];
   start: Date;
   end: Date;
@@ -21,13 +20,12 @@ function addAlpha(color: string, opacity: number): string {
   return color + _opacity.toString(16).toUpperCase();
 }
 
-function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
+function LineChartAppTcp(props: LineChartAppTcp) {
   const [data, setData] = useState({
     labels: [] as Date[],
     datasets: [] as ChartDataset[],
   });
   const [yLimits, setYLimits] = useState({ min: 0, max: 1 });
-  const [unitIndex, setUnitIndex] = useState(1);
 
   useEffect(() => {
     // Populate all possible label values as Unix time for faster comparison
@@ -60,11 +58,10 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
         );
 
         if (s) {
-          const sum = convertToUnit(s.bytesTx + s.bytesRx, unitIndex);
-          data.push(sum);
-          if (sum > max) max = sum;
-          else if (sum < min) min = sum;
-          else if (min === 0) min = sum;
+          data.push(s.pktTcp);
+          if (s.pktTcp > max) max = s.pktTcp;
+          else if (s.pktTcp < min) min = s.pktTcp;
+          else if (min === 0) min = s.pktTcp;
         } else data.push(0);
       });
       dataset.data = data;
@@ -73,11 +70,11 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
 
     setYLimits({ min: Math.round(min * 0.8), max: Math.round(max * 1.2) });
     setData(tmpData);
-  }, [props.appSessions, props.isDarkMode, unitIndex]);
+  }, [props.appSessions, props.isDarkMode]);
 
   useEffect(() => {
     buildChart();
-  }, [data, unitIndex]);
+  }, [data]);
 
   const buildChart = () => {
     Chart.register(zoomPlugin); // Must register before creating new Chart
@@ -125,7 +122,7 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
           title: {
             display: true,
             align: 'center',
-            text: `Data Usage (${UNITS[unitIndex]})`,
+            text: `TCP Packets`,
             font: {
               size: 14,
             },
@@ -144,7 +141,7 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
       plugins: {
         title: {
           display: true,
-          text: 'Data Usage per Application',
+          text: 'TCP Packets per Application',
           align: 'start' as 'start',
           font: { weight: 'bold', size: 16 },
           padding: {
@@ -180,9 +177,7 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
       },
     };
 
-    let canvas = document.getElementById(
-      'lc-app-data-usage'
-    ) as HTMLCanvasElement;
+    let canvas = document.getElementById('lc-app-tcp') as HTMLCanvasElement;
     if (canvas && data.labels.length > 0 && lineChart) {
       const xLimits = {
         min: data.labels[0].getTime() - 1000,
@@ -204,11 +199,11 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
       return;
     }
 
-    const wrapper = document.getElementById('wrapper-lc-app-data-usage');
+    const wrapper = document.getElementById('wrapper-lc-app-tcp');
     if (wrapper === null) return;
-    wrapper.innerHTML = `<canvas id="lc-app-data-usage" />`;
+    wrapper.innerHTML = `<canvas id="lc-app-tcp" />`;
 
-    canvas = document.getElementById('lc-app-data-usage') as HTMLCanvasElement;
+    canvas = document.getElementById('lc-app-tcp') as HTMLCanvasElement;
     if (canvas === null) return;
 
     let ctx = canvas.getContext('2d');
@@ -224,14 +219,8 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
 
   return (
     <div className="block-chart">
-      <button
-        className="button-unit absolute top-4 right-4"
-        onClick={() => setUnitIndex((unitIndex + 1) % UNITS.length)}
-      >
-        {UNITS[unitIndex]}
-      </button>
       <div
-        id="wrapper-lc-app-data-usage"
+        id="wrapper-lc-app-tcp"
         className="w-full h-[325px]"
         onDoubleClick={() => lineChart.resetZoom()}
       ></div>
@@ -239,4 +228,4 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
   );
 }
 
-export default LineChartAppDataUsage;
+export default LineChartAppTcp;

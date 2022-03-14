@@ -6,6 +6,11 @@ html {
   @apply bg-gray-100 overflow-hidden;
 }
 
+::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -42,31 +47,54 @@ code {
 }
 
 .button-unit {
-  @apply bg-white text-blue-600 border-blue-600 text-sm border-2 py-[0.0125rem] px-1.5 rounded-lg min-w-[2.5rem]
+  @apply bg-white text-blue-600 border-blue-600 text-sm border-2 py-[0.0125rem] px-1.5 rounded-lg min-w-[2.5rem] h-fit
   xl:text-lg xl:py-1 xl:px-4
-  dark:bg-gray-600 dark:border-blue-600 dark:text-white;
+  dark:bg-gray-600 dark:border-white dark:text-white;
 }
 
 .content-grid {
-  @apply w-full h-full p-4 pt-0 grid grid-cols-4 gap-4 auto-rows-max overflow-y-scroll;
+  @apply w-full h-full p-4 pt-0 grid grid-cols-4 gap-4 overflow-y-scroll;
 }
 
 .block-chart {
-  @apply flex items-center p-4 rounded-lg shadow-md min-h-[350px] relative
+  @apply flex justify-center items-center py-4 px-5 rounded-lg shadow-md min-h-[350px] relative
   dark:bg-gray-600 dark:text-white;
 }
 
 .dropdown-menu-button {
   @apply flex justify-center items-center w-max rounded-md shadow-lg px-4 py-2 bg-white text-sm font-medium text-gray-700 
-  hover:bg-gray-50 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500;
+  hover:bg-gray-50 dark:bg-gray-500 dark:text-white dark:hover:bg-gray-400;
 }
 
 .dropdown-menu-items {
   @apply origin-top-right absolute right-0 mt-2 w-max rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 
-  dark:bg-gray-600 focus:outline-none;
+  dark:bg-gray-500 focus:outline-none;
 }
 
 .dropdown-menu-item {
   @apply text-gray-700 block px-4 py-2 text-sm 
-  hover:cursor-pointer hover:bg-gray-50 dark:text-white dark:bg-gray-600 dark:hover:bg-gray-500;
+  hover:cursor-pointer hover:bg-gray-50 dark:text-white dark:bg-gray-500 dark:hover:bg-gray-400;
+}
+
+.chart-side-pane {
+  @apply flex justify-center p-2 rounded-lg shadow-md relative overflow-y-scroll h-full
+  dark:bg-gray-600 dark:text-white;
+}
+
+.overlay {
+  @apply absolute inset-0 bg-black opacity-50 h-full flex flex-col;
+}
+
+.app-pane {
+  @apply bg-white rounded-lg p-6 shadow-lg opacity-100 max-w-[80%] w-max max-h-[50%] overflow-auto relative
+  dark:bg-gray-600 dark:text-white;
+}
+
+.app-grid {
+  @apply w-full h-full pt-4 grid grid-flow-col gap-4 auto-cols-max overflow-y-scroll;
+}
+
+.app-grid-item {
+  @apply flex space-x-2 items-center w-max p-2 rounded-xl transition-all box-border border-2 border-transparent
+  hover:cursor-pointer;
 }

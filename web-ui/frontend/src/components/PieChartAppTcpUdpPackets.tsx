@@ -4,38 +4,20 @@ import { AppSession } from '../interfaces';
 import Chart from 'chart.js/auto';
 import { ChartDataset, ChartOptions } from 'chart.js';
 
-const UNITS = ['B', 'KB', 'MB', 'GB'];
-
-interface PieChartAppDataUsageProps {
+interface PieChartAppTcpUdpPacketsProps {
   appSessions: AppSession[];
   start: Date;
   end: Date;
   isDarkMode: boolean;
 }
 
-function convertToUnit(bytes: number, unitIndex: number): number {
-  switch (unitIndex) {
-    case 0:
-      return bytes;
-    case 1:
-      return bytes / 1000;
-    case 2:
-      return bytes / 1000000;
-    case 3:
-      return bytes / 1000000000;
-    default:
-      return bytes;
-  }
-}
-
 let pieChart: Chart;
 
-function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
+function PieChartAppTcpUdpPackets(props: PieChartAppTcpUdpPacketsProps) {
   const [data, setData] = useState({
     labels: [] as string[],
     datasets: [] as ChartDataset[],
   });
-  const [unitIndex, setUnitIndex] = useState(1);
 
   useEffect(() => {
     const tmpData = {
@@ -44,7 +26,7 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
     };
 
     const dataset = {
-      label: 'Data Usage per Application',
+      label: 'Application TCP/UDP Packets',
       data: [] as number[],
       backgroundColor: [] as string[],
       hoverOffset: 4,
@@ -55,18 +37,18 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
       dataset.backgroundColor?.push(as.application.colorHex);
       let sum = 0;
       as.sessions.forEach((s) => {
-        sum += s.bytesRx + s.bytesTx;
+        sum += s.pktTcp + s.pktUdp;
       });
-      dataset.data.push(convertToUnit(sum, unitIndex));
+      dataset.data.push(sum);
     });
 
     tmpData.datasets.push(dataset);
     setData(tmpData);
-  }, [props.appSessions, props.isDarkMode, unitIndex]);
+  }, [props.appSessions, props.isDarkMode]);
 
   useEffect(() => {
     buildChart();
-  }, [data, unitIndex]);
+  }, [data]);
 
   const buildChart = () => {
     const options: ChartOptions = {
@@ -76,7 +58,7 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
       plugins: {
         title: {
           display: true,
-          text: 'Data Usage per Application',
+          text: 'Packets UDP/TCP per Application',
           font: {
             weight: 'bold',
             size: 16,
@@ -86,7 +68,7 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
     };
 
     let canvas = document.getElementById(
-      'pc-app-data-usage'
+      'pc-app-packets-tcp-udp'
     ) as HTMLCanvasElement;
     if (canvas && data.labels.length > 0 && pieChart) {
       pieChart.data = data;
@@ -95,11 +77,13 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
       return;
     }
 
-    const wrapper = document.getElementById('wrapper-pc-app-data-usage');
+    const wrapper = document.getElementById('wrapper-pc-app-packets-tcp-udp');
     if (wrapper === null) return;
-    wrapper.innerHTML = `<canvas id="pc-app-data-usage" />`;
+    wrapper.innerHTML = `<canvas id="pc-app-packets-tcp-udp" />`;
 
-    canvas = document.getElementById('pc-app-data-usage') as HTMLCanvasElement;
+    canvas = document.getElementById(
+      'pc-app-packets-tcp-udp'
+    ) as HTMLCanvasElement;
     if (canvas === null) return;
 
     let ctx = canvas.getContext('2d');
@@ -114,15 +98,10 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
 
   return (
     <div className="block-chart">
-      <button
-        className="button-unit absolute top-4 right-4"
-        onClick={() => setUnitIndex((unitIndex + 1) % UNITS.length)}
-      >
-        {UNITS[unitIndex]}
-      </button>
-      <div id="wrapper-pc-app-data-usage"></div>
+      <div id="wrapper-pc-app-packets-tcp-udp"></div>
+      <div className="chart-side-pane"></div>
     </div>
   );
 }
 
-export default PieChartAppDataUsage;
+export default PieChartAppTcpUdpPackets;

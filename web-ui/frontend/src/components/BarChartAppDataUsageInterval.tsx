@@ -1,5 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import { AppSession } from '../interfaces';
+import { convertToUnit, UNITS } from '../units';
 
 import Chart from 'chart.js/auto';
 import { ChartDataset } from 'chart.js';
@@ -25,7 +26,6 @@ interface BarChartAppDataUsagePerIntervalProps {
   end: Date;
   isDarkMode: boolean;
 }
-
 let barChart: Chart;
 
 function addAlpha(color: string, opacity: number): string {
@@ -40,90 +40,9 @@ function BarChartAppDataUsagePerInterval(
     labels: [] as Date[],
     datasets: [] as ChartDataset[],
   });
-  const [yLimits, setYLimits] = useState({ min: 0, max: 100 });
+  const [yMax, setYMax] = useState(10);
   const [interval, setInterval] = useState(INTERVALS[0]);
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      duration: 0,
-    },
-    interaction: {
-      intersect: false,
-      axis: 'x' as 'x',
-      mode: 'index' as 'index',
-    },
-    scales: {
-      x: {
-        type: 'time' as 'time',
-        time: {
-          displayFormats: {
-            millisecond: 'ss.SSS',
-            minute: 'mm:ss',
-            hour: 'HH:mm',
-            day: 'DD HH:mm',
-          },
-        },
-        min: props.start.getTime(),
-        max: props.end.getTime(),
-        grid: {
-          display: true,
-          color: props.isDarkMode
-            ? 'rgba(255, 255, 255, 0.3)'
-            : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-      y: {
-        min: 0,
-        max: 100,
-        display: true,
-        grid: {
-          display: true,
-          color: props.isDarkMode
-            ? 'rgba(255, 255, 255, 0.3)'
-            : 'rgba(0, 0, 0, 0.1)',
-        },
-      },
-    },
-    plugins: {
-      title: {
-        display: true,
-        text: 'Application Data Usage per Interval',
-        align: 'start' as 'start',
-        font: { weight: 'bold', size: 16 },
-        padding: {
-          bottom: 10,
-        },
-      },
-      legend: {
-        display: true,
-      },
-      tooltip: { enabled: true },
-      zoom: {
-        pan: {
-          enabled: true,
-          mode: 'xy' as 'xy',
-        },
-        zoom: {
-          wheel: { enabled: true },
-          pinch: { enabled: true },
-          mode: 'xy' as 'xy',
-          speed: 2,
-        },
-        limits: {
-          x: {
-            min: props.start.getTime(),
-            max: props.end.getTime(),
-          },
-          y: {
-            min: 'original' as 'original' | any,
-            max: 'original' as 'original' | any,
-          },
-        },
-      },
-    },
-  };
+  const [unitIndex, setUnitIndex] = useState(1);
 
   useEffect(() => {
     // Populate all possible label values as Unix time for faster comparison
@@ -144,6 +63,7 @@ function BarChartAppDataUsagePerInterval(
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
     tmpLabels.forEach((l) => tmpData.labels.push(new Date(l))); // Push labels into tmpData as Date type
 
+    let max = 0;
     props.appSessions.forEach((appSess) => {
       const color: string = appSess.application.colorHex;
       const dataset = {
@@ -158,32 +78,127 @@ function BarChartAppDataUsagePerInterval(
         appSess.sessions.forEach((s) => {
           if (Math.abs(label - s.start) > msInterval) return;
 
-          let sum = s.bytesTx + s.bytesRx;
-          if (data[i]) data[i] += sum;
-          else data.push(sum);
+          let sum = convertToUnit(s.bytesTx + s.bytesRx, unitIndex);
+          if (data[i]) {
+            data[i] += sum;
+            sum = data[i] + sum;
+          } else data.push(sum);
 
-          if (sum > yLimits.max) {
-            setYLimits({ min: yLimits.min, max: Math.round(sum * 1.2) });
-          } else if (sum < yLimits.min) {
-            setYLimits({ min: Math.round(sum * 0.8), max: yLimits.max });
-          } else if (yLimits.min === 0) {
-            setYLimits({ min: Math.round(sum * 0.8), max: yLimits.max });
-          }
+          if (sum > max) max = sum;
         });
       });
       dataset.data = data;
       tmpData.datasets.push(dataset);
     });
 
+    setYMax(Math.round(max * 1.1));
     setData(tmpData);
-  }, [props.appSessions, props.isDarkMode]);
+  }, [props.appSessions, props.isDarkMode, unitIndex]);
 
   useEffect(() => {
     buildChart();
-  }, [data]);
+  }, [data, unitIndex]);
 
   const buildChart = () => {
     Chart.register(zoomPlugin); // Must register before creating new Chart
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 0,
+      },
+      interaction: {
+        intersect: false,
+        axis: 'x' as 'x',
+        mode: 'index' as 'index',
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            align: 'center',
+            text: 'Time',
+            font: {
+              size: 14,
+            },
+          },
+          type: 'time' as 'time',
+          time: {
+            displayFormats: {
+              millisecond: 'HH:mm:ss',
+              minute: 'HH:mm:ss',
+              hour: 'HH:mm',
+              day: 'DD HH:mm',
+            },
+          },
+          min: props.start.getTime(),
+          max: props.end.getTime(),
+          grid: {
+            display: true,
+            color: props.isDarkMode
+              ? 'rgba(255, 255, 255, 0.3)'
+              : 'rgba(0, 0, 0, 0.1)',
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            align: 'center',
+            text: `Data Usage (${UNITS[unitIndex]})`,
+            font: {
+              size: 14,
+            },
+          },
+          min: 0,
+          max: 1,
+          display: true,
+          grid: {
+            display: true,
+            color: props.isDarkMode
+              ? 'rgba(255, 255, 255, 0.3)'
+              : 'rgba(0, 0, 0, 0.1)',
+          },
+        },
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Data Usage per Application every Interval',
+          align: 'start' as 'start',
+          font: { weight: 'bold', size: 16 },
+          padding: {
+            bottom: 10,
+          },
+        },
+        legend: {
+          display: true,
+        },
+        tooltip: { enabled: true },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'xy' as 'xy',
+          },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: 'xy' as 'xy',
+            speed: 2,
+          },
+          limits: {
+            x: {
+              min: props.start.getTime(),
+              max: props.end.getTime(),
+            },
+            y: {
+              min: 'original' as 'original' | any,
+              max: 'original' as 'original' | any,
+            },
+          },
+        },
+      },
+    };
 
     let canvas = document.getElementById(
       'bc-app-data-usage-per-interval'
@@ -196,12 +211,10 @@ function BarChartAppDataUsagePerInterval(
 
       options.scales.x.min = xLimits.min;
       options.scales.x.max = xLimits.max;
-      options.scales.y.min = yLimits.min;
-      options.scales.y.max = yLimits.max;
-      options.plugins.zoom.limits = {
-        x: xLimits,
-        y: yLimits,
-      };
+      options.scales.y.max = yMax;
+      options.plugins.zoom.limits.x = xLimits;
+      options.plugins.zoom.limits.y.max = yMax;
+      //@ts-ignore
       barChart.options = options;
       barChart.data = data;
       barChart.update();
@@ -225,40 +238,50 @@ function BarChartAppDataUsagePerInterval(
     barChart = new Chart(ctx, {
       type: 'bar',
       data: data,
+      //@ts-ignore
       options: options,
     });
   };
 
   return (
     <div className="block-chart">
-      <Menu as="div" className="absolute top-2 right-2 inline-block text-left">
-        <div>
-          <Menu.Button className="dropdown-menu-button">
-            {interval}
-            <ChevronDownIcon
-              className="-mr-1 ml-2 h-5 w-5"
-              aria-hidden="true"
-            />
-          </Menu.Button>
-        </div>
+      <div className="absolute top-2 right-4 text-left flex space-x-4 items-center">
+        <Menu as="div" className="">
+          <div>
+            <Menu.Button className="dropdown-menu-button">
+              {interval}
+              <ChevronDownIcon
+                className="-mr-1 ml-2 h-5 w-5"
+                aria-hidden="true"
+              />
+            </Menu.Button>
+          </div>
 
-        <Transition as={Fragment}>
-          <Menu.Items className="dropdown-menu-items">
-            <div className="py-1">
-              {INTERVALS.map((interval, i) => (
-                <Menu.Item>
-                  <a
-                    className="dropdown-menu-item"
-                    onClick={() => setInterval(INTERVALS[i])}
-                  >
-                    {interval}
-                  </a>
-                </Menu.Item>
-              ))}
-            </div>
-          </Menu.Items>
-        </Transition>
-      </Menu>
+          <Transition as={Fragment}>
+            <Menu.Items className="dropdown-menu-items">
+              <div className="py-1">
+                {INTERVALS.map((interval, i) => (
+                  <Menu.Item key={interval}>
+                    <a
+                      className="dropdown-menu-item"
+                      onClick={() => setInterval(INTERVALS[i])}
+                    >
+                      {interval}
+                    </a>
+                  </Menu.Item>
+                ))}
+              </div>
+            </Menu.Items>
+          </Transition>
+        </Menu>
+
+        <button
+          className="button-unit"
+          onClick={() => setUnitIndex((unitIndex + 1) % UNITS.length)}
+        >
+          {UNITS[unitIndex]}
+        </button>
+      </div>
 
       <div
         id="wrapper-bc-app-data-usage-per-interval"

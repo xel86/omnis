@@ -108,50 +108,55 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
   return res.status(httpStatusCodes.OK).send({ data: data });
 });
 
-app.post(
+app.get(
   '/applications',
-  async (req: Request<{}, {}, App[]>, res: Response): Promise<Response> => {
-    for (const app of req.body) {
-      if (!app.colorHex) app.colorHex = '';
-      try {
-        await prisma.application.create({ data: app });
-      } catch (e) {
-        if (e instanceof PrismaClientKnownRequestError) {
-          const errMsg = 'Error: ' + e.message + '\n' + e.meta;
-          console.log(errMsg);
-          return res
-            .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
-            .send({ message: errMsg });
-        }
+  async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const apps = await prisma.application.findMany();
+      return res.status(httpStatusCodes.OK).send({ data: apps });
+    } catch (e) {
+      if (e instanceof PrismaClientKnownRequestError) {
+        const errMsg = 'Error: ' + e.message + '\n' + e.meta;
+        console.log(errMsg);
+        return res
+          .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+          .send({ message: errMsg });
       }
+      return res
+        .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+        .send({ message: 'Error: ' + e });
     }
-
-    return res
-      .status(httpStatusCodes.OK)
-      .send({ message: 'Applications inserted successfully.' });
   }
 );
 
-app.post(
-  '/sessions',
-  async (req: Request<{}, {}, Session[]>, res: Response): Promise<Response> => {
-    for (const app of req.body) {
-      try {
-        await prisma.session.create({ data: app });
-      } catch (e) {
-        if (e instanceof PrismaClientKnownRequestError) {
-          const errMsg = 'Error: ' + e.message + '\n' + e.meta;
-          console.log(errMsg);
-          return res
-            .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
-            .send({ message: errMsg });
-        }
+app.put(
+  '/applications',
+  async (req: Request<{}, {}, App>, res: Response): Promise<Response> => {
+    try {
+      await prisma.application.update({
+        where: {
+          name: req.body.name,
+        },
+        data: {
+          colorHex: req.body.colorHex,
+        },
+      });
+    } catch (e) {
+      if (e instanceof PrismaClientKnownRequestError) {
+        const errMsg = 'Error: ' + e.message + '\n' + e.meta;
+        console.log(errMsg);
+        return res
+          .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+          .send({ message: errMsg });
       }
+      return res
+        .status(httpStatusCodes.INTERNAL_SERVER_ERROR)
+        .send({ message: 'Error: ' + e });
     }
 
     return res
       .status(httpStatusCodes.OK)
-      .send({ message: 'Sessions inserted successfully.' });
+      .send({ message: 'Application color changed successfully.' });
   }
 );
 
