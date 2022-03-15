@@ -19,7 +19,7 @@
 std::unordered_map<std::string, struct unresolved_buffer> unresolved_packets;
 struct ip_list *g_local_ip_list;
 
-inline void try_resolve_packets() {
+void try_resolve_packets() {
     if (unresolved_packets.empty()) return;
 
     refresh_proc_mappings();
@@ -42,6 +42,10 @@ inline void try_resolve_packets() {
 }
 
 int should_disregard_packet(const struct packet *packet) {
+    /* Is the packet not directed for any interface address
+     * on the selected device(s)? Broadcast messages are often the culprit */
+    if (packet->direction == NOT_OUR_PACKET) return 1;
+
     /* DNS & MDNS Packets will appear as UDP packets, but have no socket
      * associated with it in /proc/net/udp. We must distinguish them somehow,
      * they always come from port 53 or 5353...
@@ -141,7 +145,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
 
         default:
             if (0)  // debug
-                printf("\n!! Got Unknown Packet With Protocal Number %d !!\n",
+                printf("\n!! Got Unknown Packet With Protocol Number %d !!\n",
                        ip_header->protocol);
             return;
     }
@@ -158,6 +162,9 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", dip, packet.dest_port, sip,
                  packet.source_port);
 
+    /* Lock application maps so we can insert/update data */
+    std::unique_lock<std::mutex> lock(g_applications_lock);
+
     /* Every 500 packets captured we try to resolve any unresolved packets.
      * This is completely arbitrary, and something else could be better.
      * Could a timed interval potentially be better? */
@@ -167,6 +174,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     }
 
     // TODO: Can we somehow avoid calling find twice for connected UDP sockets?
+    /* Try finding unconnected UDP sockets */
     auto found = g_packet_process_map.end();
     if (packet.protocol == IPPROTO_UDP) {
         char port_hash[10];
@@ -178,6 +186,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         found = g_packet_process_map.find(port_hash);
     }
 
+    /* Try finding TCP or connected UDP sockets. */
     if (found == g_packet_process_map.end()) {
         found = g_packet_process_map.find(hash);
     }
@@ -187,10 +196,17 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
          * put into the unresolved_packets map which will act as a buffer for a
          * connection dictated by its packet hash. This is to reduce the amount
          * of times we call refresh_proc_mappings() overall. */
-        if (packet.direction == OUTGOING_DIRECTION)
+
+        if (packet.direction == OUTGOING_DIRECTION) {
             unresolved_packets[hash].pkt_tx += packet.len;
-        else if (packet.direction == INCOMING_DIRECTION)
+            packet.protocol == IPPROTO_TCP ? unresolved_packets[hash].pkt_tcp++
+                                           : unresolved_packets[hash].pkt_udp++;
+
+        } else if (packet.direction == INCOMING_DIRECTION) {
             unresolved_packets[hash].pkt_rx += packet.len;
+            packet.protocol == IPPROTO_TCP ? unresolved_packets[hash].pkt_tcp++
+                                           : unresolved_packets[hash].pkt_udp++;
+        }
 
         resolve_interval++;
         return;
@@ -199,10 +215,13 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     /* After this point, the packet successfully resolved to an application */
     struct application *app;
     app = found->second;
-    if (packet.direction == OUTGOING_DIRECTION)
+    if (packet.direction == OUTGOING_DIRECTION) {
         app->pkt_tx += packet.len;
-    else if (packet.direction == INCOMING_DIRECTION)
+        packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
+    } else if (packet.direction == INCOMING_DIRECTION) {
         app->pkt_rx += packet.len;
+        packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
+    }
 
     resolve_interval++;
 

@@ -11,14 +11,20 @@
 
 enum direction find_packet_direction(struct packet *packet) {
     in_addr_t source_ip = packet->source_ip.s_addr;
+    in_addr_t dest_ip = packet->dest_ip.s_addr;
 
+    enum direction direction;
     if (ip_list_contains(*g_local_ip_list, source_ip)) {
-        packet->direction = OUTGOING_DIRECTION;
-        return OUTGOING_DIRECTION;
+        direction = OUTGOING_DIRECTION;
     } else {
-        packet->direction = INCOMING_DIRECTION;
-        return INCOMING_DIRECTION;
+        if (ip_list_contains(*g_local_ip_list, dest_ip))
+            direction = INCOMING_DIRECTION;
+        else
+            direction = NOT_OUR_PACKET;
     }
+
+    packet->direction = direction;
+    return direction;
 }
 
 void print_packet(struct packet *packet, struct application *app) {

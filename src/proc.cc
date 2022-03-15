@@ -18,6 +18,8 @@ extern int errno;
  * ipv6 size + seperator, max 5 digit port number + null char. */
 const int HASHKEYSIZE = (INET6_ADDRSTRLEN + 5) + 1 + (INET6_ADDRSTRLEN + 5) + 1;
 
+std::mutex g_applications_lock;
+
 std::unordered_map<std::string, struct application *> g_packet_process_map;
 std::unordered_map<std::string, struct application *> g_application_map;
 

@@ -10,6 +10,7 @@ enum direction {
     UNKNOWN_DIRECTION,
     INCOMING_DIRECTION,
     OUTGOING_DIRECTION,
+    NOT_OUR_PACKET,
 };
 
 struct packet {

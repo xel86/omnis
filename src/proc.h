@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -28,6 +29,13 @@ extern std::unordered_map<std::string, struct application *>
  * from a pruned cmdline as a key. */
 extern std::unordered_map<std::string, struct application *> g_application_map;
 
+/* Lock for all maps that have a struct application pointer for a value.
+ * Since they all share the same set of application pointers it makes sense to
+ * just have a single mutex for all of them.
+ * Not a reader/writer lock since when we dump the current intervals application
+ * data into the database we also reset all of the values. */
+extern std::mutex g_applications_lock;
+
 /* Max length of packet hash key for g_packet_process_map */
 extern const int HASHKEYSIZE;
 
@@ -45,6 +53,12 @@ void handle_proc_net_line(const char *buffer);
 void refresh_proc_pid_mapping();
 int entry_is_pid_dir(dirent *entry);
 void handle_pid_dir(const char *pid);
+
+/* Programs made in interpreted languages such as python, will be launched from
+ * python's runtime interpreter making the cmdline start with /usr/bin/python.
+ * This creates a problem with programs made in python not getting the proper
+ * executable name, this function checks if it is one of these cases. */
+int is_interpreted(const char *cmp, size_t len);
 
 /* Allocates and sets the value of target to the cmdline of the pid */
 void set_cmdline(char **target, const char *pid);

@@ -1,6 +1,8 @@
 #include <pcap.h>
+#include <unistd.h>
 
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 #include "human.h"
@@ -27,6 +29,9 @@ void dummy_print_status() {
     while (1) {
         int interval = 5;
         std::this_thread::sleep_for(std::chrono::seconds(interval));
+
+        std::unique_lock<std::mutex> lock(g_applications_lock);
+
         printf("\n[###################################]\n");
         for (const auto &elem : g_application_map) {
             char rx[15], tx[15];
@@ -37,8 +42,13 @@ void dummy_print_status() {
                     bytes_to_human_readable(rx, elem.second->pkt_rx, interval),
                     bytes_to_human_readable(tx, elem.second->pkt_tx, interval));
 
+                printf("    tcp: %d udp: %d\n", elem.second->pkt_tcp,
+                       elem.second->pkt_udp);
+
                 elem.second->pkt_rx = 0;
                 elem.second->pkt_tx = 0;
+                elem.second->pkt_tcp = 0;
+                elem.second->pkt_udp = 0;
             }
         }
     }
@@ -50,6 +60,9 @@ int main(int argc, char **argv) {
     int packet_count_limit = 1;
     int timeout_limit = 100;  // milliseconds
     char error_buffer[PCAP_ERRBUF_SIZE];
+
+    pid_t pid = getpid();
+    printf("PID: %d\n", pid);
 
     if (pcap_findalldevs(&devices, error_buffer)) {
         printf("error finding device: %s\n", error_buffer);
