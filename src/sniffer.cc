@@ -85,8 +85,8 @@ void get_local_ip_addresses(const char *device_name) {
         ip_address.s_addr =
             ((struct sockaddr_in *)ifaddress->ifa_addr)->sin_addr.s_addr;
 
-        printf("Local IP Address found for device %s: %s\n", device_name,
-               inet_ntoa(ip_address));
+        fprintf(stderr, "Local IP Address found for device %s: %s\n",
+                device_name, inet_ntoa(ip_address));
 
         /* If address starts with 192.168.x.x push to the front of the list */
         if (ip_address.s_addr >= 43200) {
@@ -95,6 +95,8 @@ void get_local_ip_addresses(const char *device_name) {
             ip_list_push_back(&g_local_ip_list, ip_address);
         }
     }
+
+    free(interface_addresses);
 }
 
 void handle_tcp_packet(struct packet *packet, const u_char *buffer,
@@ -213,7 +215,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     }
 
     /* After this point, the packet successfully resolved to an application */
-    struct application *app;
+    std::shared_ptr<struct application> app;
     app = found->second;
     if (packet.direction == OUTGOING_DIRECTION) {
         app->pkt_tx += packet.len;
@@ -228,6 +230,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     if (0) {  // debug
         if (ip_header->protocol == IPPROTO_TCP ||
             ip_header->protocol == IPPROTO_UDP)
-            print_packet(&packet, app);
+            print_packet(&packet, app.get());
     }
 }

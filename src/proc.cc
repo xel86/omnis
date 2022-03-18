@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <unordered_map>
 
 extern int errno;
@@ -20,14 +21,24 @@ const int HASHKEYSIZE = (INET6_ADDRSTRLEN + 5) + 1 + (INET6_ADDRSTRLEN + 5) + 1;
 
 std::mutex g_applications_lock;
 
-std::unordered_map<std::string, struct application *> g_packet_process_map;
-std::unordered_map<std::string, struct application *> g_application_map;
+std::unordered_map<std::string, std::shared_ptr<struct application>>
+    g_packet_process_map;
+
+std::unordered_map<std::string, std::shared_ptr<struct application>>
+    g_application_map;
 
 // temporary maps to use to combine into global g_packet_process_map
 std::unordered_map<std::string, unsigned long> temp_inode_map;
-std::unordered_map<unsigned long, struct application *> temp_process_map;
+std::unordered_map<unsigned long, std::shared_ptr<struct application>>
+    temp_process_map;
 
 void refresh_proc_mappings() {
+    /* TODO: lazy? Could we avoid having to deallocate all these pointers?
+     * Perhaps keep a running set of pid's in /proc and only refresh all if we
+     * can't find the new socket in a new pid folder? */
+    g_packet_process_map.clear();
+    g_application_map.clear();
+
     refresh_proc_pid_mapping();
     refresh_proc_net_mapping("/proc/net/tcp");
     refresh_proc_net_mapping("/proc/net/udp");
@@ -180,7 +191,7 @@ void handle_pid_dir(const char *pid) {
     char *cmdline;
     set_cmdline(&cmdline, pid);
 
-    struct application *app;
+    std::shared_ptr<struct application> app;
     auto found = g_application_map.find(cmdline);
     if (found != g_application_map.end()) {
         app = found->second;
@@ -214,7 +225,7 @@ void handle_pid_dir(const char *pid) {
             if (!has_socket && new_app) {
                 has_socket = 1;
 
-                app = (struct application *)malloc(sizeof(struct application));
+                app = std::make_shared<struct application>();
                 app->id = 0;
                 app->pkt_rx = 0;
                 app->pkt_tx = 0;

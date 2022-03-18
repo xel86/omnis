@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -22,12 +23,13 @@
  * port, dest ip, and dest port with its associated program that owns the
  * socket's inode.
  */
-extern std::unordered_map<std::string, struct application *>
+extern std::unordered_map<std::string, std::shared_ptr<struct application>>
     g_packet_process_map;
 
 /* Instead of a packet hash being the key, this map has each applications name
  * from a pruned cmdline as a key. */
-extern std::unordered_map<std::string, struct application *> g_application_map;
+extern std::unordered_map<std::string, std::shared_ptr<struct application>>
+    g_application_map;
 
 /* Lock for all maps that have a struct application pointer for a value.
  * Since they all share the same set of application pointers it makes sense to

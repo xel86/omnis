@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <ctime>
 
 struct application {
@@ -14,6 +16,8 @@ struct application {
     int pkt_tcp;               /* number of tcp packets */
     int pkt_udp;               /* number of udp packets */
     time_t start_time;         /* timestamp for when application detected */
+
+    ~application() { free(name); }
 };
 
 void cleanup_application(struct application *app);

@@ -70,11 +70,12 @@ int main(int argc, char **argv) {
     }
 
     for (device = devices; device != NULL; device = device->next) {
-        printf("device found: %s | %s\n", device->name, device->description);
+        fprintf(stderr, "device found: %s | %s\n", device->name,
+                device->description);
     }
 
     device = devices;
-    printf("Opening device %s for sniffing\n", device->name);
+    fprintf(stderr, "Opening device %s for sniffing\n", device->name);
     handle = pcap_open_live(device->name, BUFSIZ, packet_count_limit,
                             timeout_limit, error_buffer);
 
