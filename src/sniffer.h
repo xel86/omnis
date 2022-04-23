@@ -9,6 +9,8 @@
 struct unresolved_buffer {
     unsigned long long pkt_rx; /* packets received in bytes */
     unsigned long long pkt_tx; /* packets transmitted in bytes */
+    int pkt_rx_c;              /* number of packets received */
+    int pkt_tx_c;              /* number of packets transmitted */
     int pkt_tcp;               /* number of tcp packets */
     int pkt_udp;               /* number of udp packets */
 };

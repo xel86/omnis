@@ -201,11 +201,13 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
 
         if (packet.direction == OUTGOING_DIRECTION) {
             unresolved_packets[hash].pkt_tx += packet.len;
+            unresolved_packets[hash].pkt_tx_c++;
             packet.protocol == IPPROTO_TCP ? unresolved_packets[hash].pkt_tcp++
                                            : unresolved_packets[hash].pkt_udp++;
 
         } else if (packet.direction == INCOMING_DIRECTION) {
             unresolved_packets[hash].pkt_rx += packet.len;
+            unresolved_packets[hash].pkt_rx_c++;
             packet.protocol == IPPROTO_TCP ? unresolved_packets[hash].pkt_tcp++
                                            : unresolved_packets[hash].pkt_udp++;
         }
@@ -219,9 +221,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     app = found->second;
     if (packet.direction == OUTGOING_DIRECTION) {
         app->pkt_tx += packet.len;
+        app->pkt_tx_c++;
         packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
     } else if (packet.direction == INCOMING_DIRECTION) {
         app->pkt_rx += packet.len;
+        app->pkt_tx_c++;
         packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
     }
 

@@ -10,20 +10,22 @@
 #include "proc.h"
 
 sqlite3 *db;
+time_t start_time;
+int update_interval = 5;
 
 int db_generate_schema() {
     /* Default schema for newly created database */
     std::string schema =
         "CREATE TABLE Session("
         "start          INT                     NOT NULL, "
-        "duration_sec   INT                     NOT NULL, "
-        "application_id INT                     NOT NULL, "
-        "bytes          INT                     NOT NULL, "
-        "pkt_tx         INT                     NOT NULL, "
-        "pkt_rx         INT                     NOT NULL, "
-        "pkt_total      INT                     NOT NULL, "
-        "pkt_tcp        INT                     NOT NULL, "
-        "pkt_udp        INT                     NOT NULL);"
+        "durationSec    INT                     NOT NULL, "
+        "applicationId  INT                     NOT NULL, "
+        "bytesTx        INT                     NOT NULL, "
+        "bytesRx        INT                     NOT NULL, "
+        "pktTx          INT                     NOT NULL, "
+        "pktRx          INT                     NOT NULL, "
+        "pktTcp         INT                     NOT NULL, "
+        "pktUdp         INT                     NOT NULL);"
         "CREATE TABLE Application("
         "id             INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL, "
         "name           TEXT UNIQUE                         NOT NULL, "
@@ -44,6 +46,7 @@ int db_generate_schema() {
 
 int db_load() {
     int err = sqlite3_open("test.db", &db);
+    start_time = std::time(NULL);
     sqlite3_stmt *stmt;
 
     if (err) {
@@ -81,26 +84,24 @@ int db_insert_traffic() {
     sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err);
 
     std::string sql =
-        "INSERT INTO Session (start, duration_sec, application_id, bytes, "
-        "pkt_tx, pkt_rx, pkt_total, pkt_tcp, pkt_udp) VALUES (?, ?, ?, ?, ?, "
+        "INSERT INTO Session (start, durationSec, applicationId, bytesTx, "
+        "bytesRx, pktTx, pktRx, pktTcp, pktUdp) VALUES (?, ?, ?, ?, ?, "
         "?, ?, ?, ?);";
 
     sqlite3_stmt *stmt;
     sqlite3_prepare_v3(db, sql.c_str(), sql.size(), 0, &stmt, NULL);
 
-    time_t current_time = std::time(NULL);
-
     printf("\n[###################################]\n");
     for (const auto &[name, app] : g_application_map) {
         char rx[15], tx[15];
         if (app->pkt_rx > 0 || app->pkt_tx > 0) {
-            sqlite3_bind_int(stmt, 1, app->start_time);
-            sqlite3_bind_int(stmt, 2, (current_time - app->start_time));
+            sqlite3_bind_int(stmt, 1, start_time);
+            sqlite3_bind_int(stmt, 2, update_interval);
             sqlite3_bind_int(stmt, 3, app->id);
-            sqlite3_bind_int(stmt, 4, (app->pkt_tx + app->pkt_rx));
-            sqlite3_bind_int(stmt, 5, app->pkt_tx);
-            sqlite3_bind_int(stmt, 6, app->pkt_rx);
-            sqlite3_bind_int(stmt, 7, (app->pkt_tx + app->pkt_rx));
+            sqlite3_bind_int(stmt, 4, app->pkt_tx);
+            sqlite3_bind_int(stmt, 5, app->pkt_rx);
+            sqlite3_bind_int(stmt, 6, app->pkt_tx_c);
+            sqlite3_bind_int(stmt, 7, app->pkt_rx_c);
             sqlite3_bind_int(stmt, 8, app->pkt_tcp);
             sqlite3_bind_int(stmt, 9, app->pkt_udp);
 
@@ -123,6 +124,8 @@ int db_insert_traffic() {
 
             app->pkt_rx = 0;
             app->pkt_tx = 0;
+            app->pkt_rx_c = 0;
+            app->pkt_tx_c = 0;
             app->pkt_tcp = 0;
             app->pkt_udp = 0;
         }
@@ -136,8 +139,7 @@ int db_insert_traffic() {
 
 void db_update_loop() {
     while (1) {
-        int interval = 5;
-        std::this_thread::sleep_for(std::chrono::seconds(interval));
+        std::this_thread::sleep_for(std::chrono::seconds(update_interval));
 
         db_insert_traffic();
     }

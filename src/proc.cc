@@ -230,6 +230,8 @@ void handle_pid_dir(const char *pid) {
                 app->id = 0;
                 app->pkt_rx = 0;
                 app->pkt_tx = 0;
+                app->pkt_rx_c = 0;
+                app->pkt_tx_c = 0;
                 app->pkt_tcp = 0;
                 app->pkt_udp = 0;
                 app->pid = string_to_int(pid);
