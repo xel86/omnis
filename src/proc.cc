@@ -14,6 +14,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "database.h"
+
 extern int errno;
 
 /* ipv6 size + seperator, max 5 digit port number + seperator,
@@ -237,6 +239,8 @@ void handle_pid_dir(const char *pid) {
                 app->pid = string_to_int(pid);
                 app->name = cmdline;
                 app->start_time = std::time(NULL);
+
+                db_insert_application(&(*app));
 
                 g_application_map[cmdline] = app;
             }

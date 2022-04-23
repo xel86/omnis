@@ -1,6 +1,7 @@
 #include "database.h"
 
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -12,6 +13,8 @@
 sqlite3 *db;
 time_t start_time;
 int update_interval = 5;
+
+std::unordered_map<std::string, int> application_ids;
 
 int db_generate_schema() {
     /* Default schema for newly created database */
@@ -29,7 +32,7 @@ int db_generate_schema() {
         "CREATE TABLE Application("
         "id             INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL, "
         "name           TEXT UNIQUE                         NOT NULL, "
-        "colorHex       TEXT                                NOT NULL);";
+        "colorHex       TEXT                                DEFAULT '');";
 
     char *err;
     int ret = sqlite3_exec(db, schema.c_str(), NULL, NULL, &err);
@@ -55,11 +58,11 @@ int db_load() {
         exit(1);
     }
 
-    std::string sql =
+    const char *sql =
         "SELECT EXISTS ( SELECT name FROM sqlite_schema WHERE type='table' AND "
         "name='Session' );";
 
-    sqlite3_prepare_v3(db, sql.c_str(), sql.size(), 0, &stmt, NULL);
+    sqlite3_prepare_v3(db, sql, strlen(sql), 0, &stmt, NULL);
     sqlite3_step(stmt);
 
     if (sqlite3_column_int(stmt, 0) == 0) {
@@ -67,13 +70,25 @@ int db_load() {
     }
 
     sqlite3_finalize(stmt);
-    sql.clear();
 
     printf("Loaded existing database successfully.\n");
 
     // load application ids
 
-    sqlite3_prepare_v3(db, sql.c_str(), sql.size(), 0, &stmt, NULL);
+    const char *sql2 = "SELECT id, name FROM Application;";
+
+    sqlite3_prepare_v3(db, sql2, strlen(sql2), 0, &stmt, NULL);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        std::string name;
+        name = std::string(
+            reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)));
+
+        printf("Picked up Application [%d] %s\n", id, name.c_str());
+        application_ids[name] = id;
+    }
+
+    sqlite3_finalize(stmt);
     return 0;
 }
 
@@ -135,6 +150,37 @@ int db_insert_traffic() {
     sqlite3_finalize(stmt);
 
     return 0;
+}
+
+int db_insert_application(struct application *app) {
+    auto found = application_ids.find(app->name);
+    if (found != application_ids.end()) {
+        app->id = found->second;
+        return found->second;
+    }
+
+    char sql[256], *err;
+    snprintf(sql, 256, "INSERT INTO Application (name) VALUES (\"%s\");",
+             app->name);
+
+    int ret = sqlite3_exec(db, sql, NULL, NULL, &err);
+
+    if (ret != SQLITE_OK) {
+        fprintf(
+            stderr,
+            "Error inserting new application %s into database with err: %s\n",
+            app->name, err);
+        return 0;
+    }
+
+    int new_id = sqlite3_last_insert_rowid(db);
+    app->id = new_id;
+    application_ids[app->name] = new_id;
+
+    printf("Created new application %s with id %d %d\n", app->name, new_id,
+           app->id);
+
+    return new_id;
 }
 
 void db_update_loop() {
