@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <memory>
 #include <unordered_map>
 
@@ -233,6 +234,7 @@ void handle_pid_dir(const char *pid) {
                 app->pkt_udp = 0;
                 app->pid = string_to_int(pid);
                 app->name = cmdline;
+                app->start_time = std::time(NULL);
 
                 g_application_map[cmdline] = app;
             }

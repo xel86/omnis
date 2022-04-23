@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 
+#include "database.h"
 #include "human.h"
 #include "list.h"
 #include "packet.h"
@@ -25,35 +26,6 @@ struct program_state {
     enum debug debug;
 };
 
-void dummy_print_status() {
-    while (1) {
-        int interval = 5;
-        std::this_thread::sleep_for(std::chrono::seconds(interval));
-
-        std::unique_lock<std::mutex> lock(g_applications_lock);
-
-        printf("\n[###################################]\n");
-        for (const auto &elem : g_application_map) {
-            char rx[15], tx[15];
-            if (elem.second->pkt_rx > 0 || elem.second->pkt_tx > 0) {
-                printf("[*] %s\n", elem.first.c_str());
-                printf(
-                    "    rx: %s tx: %s\n",
-                    bytes_to_human_readable(rx, elem.second->pkt_rx, interval),
-                    bytes_to_human_readable(tx, elem.second->pkt_tx, interval));
-
-                printf("    tcp: %d udp: %d\n", elem.second->pkt_tcp,
-                       elem.second->pkt_udp);
-
-                elem.second->pkt_rx = 0;
-                elem.second->pkt_tx = 0;
-                elem.second->pkt_tcp = 0;
-                elem.second->pkt_udp = 0;
-            }
-        }
-    }
-}
-
 int main(int argc, char **argv) {
     pcap_if_t *devices, *device;
     pcap_t *handle;
@@ -63,6 +35,8 @@ int main(int argc, char **argv) {
 
     pid_t pid = getpid();
     printf("PID: %d\n", pid);
+
+    int ret = db_load();
 
     if (pcap_findalldevs(&devices, error_buffer)) {
         printf("error finding device: %s\n", error_buffer);
@@ -88,7 +62,7 @@ int main(int argc, char **argv) {
     get_local_ip_addresses(device->name);
     refresh_proc_mappings();
 
-    std::thread print_update_loop(dummy_print_status);
+    std::thread database_update_loop(db_update_loop);
     pcap_loop(handle, -1, packet_handler, NULL);
 
     return 0;
