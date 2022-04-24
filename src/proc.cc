@@ -94,7 +94,7 @@ void handle_proc_net_line(const char *buffer) {
      * normal packet hash method. These streams will uniquely have only the UDP
      * port number as the key as opposed to the entire packet hash. Will only be
      * accessed by udp packets. */
-    if (source_ip.s_addr == 0 && dest_ip.s_addr == 0 && source_port != 0) {
+    if ((source_ip.s_addr == 0 || dest_ip.s_addr == 0) && source_port != 0) {
         char port_hash[10];
         snprintf(port_hash, 10, "UDP-%d", source_port);
 
@@ -135,6 +135,7 @@ void refresh_proc_net_mapping(const char *filename) {
     // First line is the header, unneeded.
     fgets(buffer, sizeof(buffer), proc_net);
 
+    printf("\n!!GOING INTO %s!!\n", filename);
     do {
         if (fgets(buffer, sizeof(buffer), proc_net)) {
             handle_proc_net_line(buffer);
@@ -191,14 +192,13 @@ void handle_pid_dir(const char *pid) {
     }
 
     int has_socket = 0, new_app = 0;
-    char *cmdline;
-    set_cmdline(&cmdline, pid);
+    char comm[16];
+    get_comm_name(comm, pid);
 
     std::shared_ptr<struct application> app;
-    auto found = g_application_map.find(cmdline);
+    auto found = g_application_map.find(comm);
     if (found != g_application_map.end()) {
         app = found->second;
-        free(cmdline);
         new_app = 0;
     } else {
         new_app = 1;
@@ -237,12 +237,12 @@ void handle_pid_dir(const char *pid) {
                 app->pkt_tcp = 0;
                 app->pkt_udp = 0;
                 app->pid = string_to_int(pid);
-                app->name = cmdline;
+                strncpy(app->name, comm, 16);
                 app->start_time = std::time(NULL);
 
                 db_insert_application(&(*app));
 
-                g_application_map[cmdline] = app;
+                g_application_map[comm] = app;
             }
 
             temp_process_map[inode] = app;
@@ -250,11 +250,23 @@ void handle_pid_dir(const char *pid) {
     }
     closedir(fd_dir);
 
-    /* If no socket file descriptor found for process, free temp cmdline */
-    if (!has_socket && new_app) {
-        free(cmdline);
+    return;
+}
+
+void get_comm_name(char *target, const char *pid) {
+    char path[21];
+    snprintf(path, sizeof(path), "/proc/%s/comm", pid);
+
+    FILE *comm = fopen(path, "r");
+    if (comm == NULL) {
+        fprintf(stderr, "Could not open comm file for pid %s, error: %s\n", pid,
+                strerror(errno));
         return;
     }
+
+    fscanf(comm, "%s", target);
+
+    fclose(comm);
 }
 
 /* sets target to the cmdline of the given pid. Allocates memory needed and

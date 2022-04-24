@@ -56,6 +56,12 @@ void refresh_proc_pid_mapping();
 int entry_is_pid_dir(dirent *entry);
 void handle_pid_dir(const char *pid);
 
+/* Get /proc/pid/comm for a process. This is the closest thing to the "name" of
+ * the program as you can get other than the cmdline. Only issue is that some
+ * programs (firefox) likes to use different comm names for some of their
+ * processes, making it not directly clear that it is firefox. */
+void get_comm_name(char *target, const char *pid);
+
 /* Programs made in interpreted languages such as python, will be launched from
  * python's runtime interpreter making the cmdline start with /usr/bin/python.
  * This creates a problem with programs made in python not getting the proper

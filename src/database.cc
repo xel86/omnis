@@ -257,6 +257,8 @@ int db_insert_application(struct application *app) {
     app->id = new_id;
     application_ids[app->name] = new_id;
 
+    printf("!debug inserted new application %s into database\n", app->name);
+
     return new_id;
 }
 

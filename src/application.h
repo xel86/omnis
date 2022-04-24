@@ -10,7 +10,7 @@
 struct application {
     int id;                    /* database application id */
     pid_t pid;                 /* pid directory for application */
-    char *name;                /* application name (pruned process cmdline) */
+    char name[16];             /* application name (pruned process cmdline) */
     unsigned long long pkt_rx; /* packets received in bytes */
     unsigned long long pkt_tx; /* packets transmitted in bytes */
     int pkt_rx_c;              /* number of packets received */
@@ -19,7 +19,7 @@ struct application {
     int pkt_udp;               /* number of udp packets */
     time_t start_time;         /* timestamp for when application detected */
 
-    ~application() { free(name); }
+    ~application() {}
 };
 
 void cleanup_application(struct application *app);
