@@ -1,7 +1,11 @@
 #include "database.h"
 
+#include <sys/stat.h>
+
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -15,6 +19,80 @@ time_t start_time;
 int update_interval = 5;
 
 std::unordered_map<std::string, int> application_ids;
+
+/* I wrote this for non-root before realizing it will be running as root. */
+int user_get_or_create_db_path(std::string *path) {
+    auto db_path = std::filesystem::path{std::getenv("XDG_CONFIG_HOME")};
+    if (db_path.empty()) {
+        std::string home = std::getenv("HOME");
+        if (home.empty()) {
+            fprintf(stderr,
+                    "Could not get your HOME directory path. Please make sure "
+                    "$HOME is set correctly. Exiting.");
+            exit(1);
+        }
+
+        auto dot_config = std::filesystem::path{home} / ".config";
+
+        /* If .config doesn't exist, then place the config folder for omnis in a
+         * directory called 'omnis' in the home directory; else use
+         * .config/omnis */
+        if (!std::filesystem::is_directory(dot_config)) {
+            db_path = std::filesystem::path{home} / "omnis";
+        } else {
+            db_path = dot_config / "omnis";
+        }
+    } else {
+        db_path = db_path / "omnis";
+    }
+
+    if (!std::filesystem::is_directory(db_path)) {
+        int check = mkdir(db_path.c_str(), 0777);
+
+        if (check) {
+            fprintf(stderr,
+                    "Unable to create omnis directory in %s "
+                    "directory for database. Exiting.",
+                    db_path.c_str());
+            exit(1);
+        }
+    }
+
+    db_path = db_path / "sqlite.db";
+
+    *path = db_path;
+    return 0;
+}
+
+int root_get_or_create_db_path(std::string *path) {
+    auto db_path = std::filesystem::path{"/var/lib"};
+
+    if (!std::filesystem::is_directory(db_path)) {
+        fprintf(stderr,
+                "/var/lib not found, needed for omnis database directory. "
+                "Exiting.");
+        exit(1);
+    }
+
+    db_path = db_path / "omnis";
+
+    if (!std::filesystem::is_directory(db_path)) {
+        int check = mkdir(db_path.c_str(), 0777);
+
+        if (check) {
+            fprintf(stderr,
+                    "Unable to create omnis directory in %s "
+                    "directory for database. Exiting.",
+                    db_path.c_str());
+            exit(1);
+        }
+    }
+
+    db_path = db_path / "omnis.db";
+
+    *path = db_path;
+    return 0;
+}
 
 int db_generate_schema() {
     /* Default schema for newly created database */
@@ -48,7 +126,10 @@ int db_generate_schema() {
 }
 
 int db_load() {
-    int err = sqlite3_open("test.db", &db);
+    std::string db_path;
+    root_get_or_create_db_path(&db_path);
+
+    int err = sqlite3_open(db_path.c_str(), &db);
     start_time = std::time(NULL);
     sqlite3_stmt *stmt;
 
@@ -71,7 +152,7 @@ int db_load() {
 
     sqlite3_finalize(stmt);
 
-    printf("Loaded existing database successfully.\n");
+    fprintf(stderr, "Loaded existing database successfully.\n");
 
     // load application ids
 
@@ -84,7 +165,6 @@ int db_load() {
         name = std::string(
             reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)));
 
-        printf("Picked up Application [%d] %s\n", id, name.c_str());
         application_ids[name] = id;
     }
 
@@ -176,9 +256,6 @@ int db_insert_application(struct application *app) {
     int new_id = sqlite3_last_insert_rowid(db);
     app->id = new_id;
     application_ids[app->name] = new_id;
-
-    printf("Created new application %s with id %d %d\n", app->name, new_id,
-           app->id);
 
     return new_id;
 }

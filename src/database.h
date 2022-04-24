@@ -15,6 +15,13 @@ extern sqlite3 *db;
 /* Holds all of the existing application names and their corresponding id */
 extern std::unordered_map<std::string, int> application_ids;
 
+/* Sets full database path in path for an omnis that is running as a non-root
+ * user. */
+int user_get_or_create_db_path(std::string *path);
+
+/* Sets full database path in path for an omnis that is running as root. */
+int root_get_or_create_db_path(std::string *path);
+
 /* Used for creating new sqlite3 databases with the schema we designed. */
 int db_generate_schema();
 
