@@ -135,7 +135,6 @@ void refresh_proc_net_mapping(const char *filename) {
     // First line is the header, unneeded.
     fgets(buffer, sizeof(buffer), proc_net);
 
-    printf("\n!!GOING INTO %s!!\n", filename);
     do {
         if (fgets(buffer, sizeof(buffer), proc_net)) {
             handle_proc_net_line(buffer);
