@@ -170,7 +170,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
     /* Every 500 packets captured we try to resolve any unresolved packets.
      * This is completely arbitrary, and something else could be better.
      * Could a timed interval potentially be better? */
-    if (resolve_interval > 500) {
+    if (resolve_interval > 100) {
         try_resolve_packets();
         resolve_interval = 0;
     }

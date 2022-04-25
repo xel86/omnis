@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 
+#include "args.h"
 #include "database.h"
 #include "human.h"
 #include "list.h"
@@ -12,21 +13,14 @@
 #include "proc.h"
 #include "sniffer.h"
 
-enum debug {
-    DEBUG_NONE = 0,
-    DEBUG_SOME = 1,
-    DEBUG_ALL = 2,
-};
-
-/*
- * used as a global struct that carries user options to determine program
- * state. Includes options given by command line arguments and config files.
- */
-struct program_state {
-    enum debug debug;
-};
-
 int main(int argc, char **argv) {
+    parse_args(argc, argv, &g_args);
+
+    if (!g_args.daemon) {
+        printf("Not in daemon mode! :)\n");
+        exit(1);
+    }
+
     pcap_if_t *devices, *device;
     pcap_t *handle;
     int packet_count_limit = 1;
@@ -36,7 +30,7 @@ int main(int argc, char **argv) {
     pid_t pid = getpid();
     printf("PID: %d\n", pid);
 
-    int ret = db_load();
+    db_load();
 
     if (pcap_findalldevs(&devices, error_buffer)) {
         printf("error finding device: %s\n", error_buffer);
