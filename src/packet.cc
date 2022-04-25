@@ -27,7 +27,7 @@ enum direction find_packet_direction(struct packet *packet) {
     return direction;
 }
 
-void print_packet(struct packet *packet, struct application *app) {
+void print_packet(struct packet *packet, struct application *app, FILE *fp) {
     const char *protocol_string;
     const char *direction_string;
     switch (packet->protocol) {
@@ -54,19 +54,18 @@ void print_packet(struct packet *packet, struct application *app) {
             break;
     }
 
-    fprintf(stderr, "\n######### %s %s #########\n", direction_string,
+    fprintf(fp, "\n######### %s %s #########\n", direction_string,
             protocol_string);
-    fprintf(stderr, "sport: %hu dport: %hu\n", packet->source_port,
+    fprintf(fp, "sport: %hu dport: %hu\n", packet->source_port,
             packet->dest_port);
-    fprintf(stderr, "sip: %s ", inet_ntoa(packet->source_ip));
-    fprintf(stderr, "dip: %s\n", inet_ntoa(packet->dest_ip));
-    fprintf(stderr, "length: %d header len: %d\n", packet->len,
-            packet->header_len);
-    fprintf(stderr, "time: %lld\n", (long long)packet->time);
+    fprintf(fp, "sip: %s ", inet_ntoa(packet->source_ip));
+    fprintf(fp, "dip: %s\n", inet_ntoa(packet->dest_ip));
+    fprintf(fp, "length: %d header len: %d\n", packet->len, packet->header_len);
+    fprintf(fp, "time: %lld\n", (long long)packet->time);
 
     if (app == NULL) {
-        fprintf(stderr, "FROM APPLICATION: Unknown (for now!)\n");
+        fprintf(fp, "FROM APPLICATION: Unknown (for now!)\n");
     } else {
-        fprintf(stderr, "FROM APPLICATION: %s\n", app->name);
+        fprintf(fp, "FROM APPLICATION: %s\n", app->name);
     }
 }

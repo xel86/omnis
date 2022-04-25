@@ -12,8 +12,6 @@ struct args {
     int interval; /* interval to update database in seconds */
 };
 
-extern args g_args;
-
 void print_help();
 
 int parse_args(int argc, char **argv, struct args *args);

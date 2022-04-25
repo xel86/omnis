@@ -12,11 +12,11 @@
 
 #include "application.h"
 #include "human.h"
+#include "omnis.h"
 #include "proc.h"
 
 sqlite3 *db;
 time_t start_time;
-int update_interval = 5;
 
 std::unordered_map<std::string, int> application_ids;
 
@@ -26,7 +26,7 @@ int user_get_or_create_db_path(std::string *path) {
     if (db_path.empty()) {
         std::string home = std::getenv("HOME");
         if (home.empty()) {
-            fprintf(stderr,
+            fprintf(g_log,
                     "Could not get your HOME directory path. Please make sure "
                     "$HOME is set correctly. Exiting.");
             exit(1);
@@ -50,7 +50,7 @@ int user_get_or_create_db_path(std::string *path) {
         int check = mkdir(db_path.c_str(), 0777);
 
         if (check) {
-            fprintf(stderr,
+            fprintf(g_log,
                     "Unable to create omnis directory in %s "
                     "directory for database. Exiting.",
                     db_path.c_str());
@@ -68,7 +68,7 @@ int root_get_or_create_db_path(std::string *path) {
     auto db_path = std::filesystem::path{"/var/lib"};
 
     if (!std::filesystem::is_directory(db_path)) {
-        fprintf(stderr,
+        fprintf(g_log,
                 "/var/lib not found, needed for omnis database directory. "
                 "Exiting.");
         exit(1);
@@ -80,7 +80,7 @@ int root_get_or_create_db_path(std::string *path) {
         int check = mkdir(db_path.c_str(), 0777);
 
         if (check) {
-            fprintf(stderr,
+            fprintf(g_log,
                     "Unable to create omnis directory in %s "
                     "directory for database. Exiting.",
                     db_path.c_str());
@@ -116,12 +116,12 @@ int db_generate_schema() {
     int ret = sqlite3_exec(db, schema.c_str(), NULL, NULL, &err);
 
     if (ret != SQLITE_OK) {
-        fprintf(stderr, "Error creating schema table 'SESSION' with error: %s",
+        fprintf(g_log, "Error creating schema table 'SESSION' with error: %s",
                 err);
         exit(1);
     }
 
-    printf("Sqlite3 schema generated successfully\n");
+    fprintf(g_log, "Sqlite3 schema generated successfully\n");
     return 0;
 }
 
@@ -134,7 +134,7 @@ int db_load() {
     sqlite3_stmt *stmt;
 
     if (err) {
-        fprintf(stderr, "Error opening database with error: %s",
+        fprintf(g_log, "Error opening database with error: %s",
                 sqlite3_errmsg(db));
         exit(1);
     }
@@ -152,7 +152,7 @@ int db_load() {
 
     sqlite3_finalize(stmt);
 
-    fprintf(stderr, "Loaded existing database successfully.\n");
+    fprintf(g_log, "Loaded existing database successfully.\n");
 
     // load application ids
 
@@ -186,12 +186,14 @@ int db_insert_traffic() {
     sqlite3_stmt *stmt;
     sqlite3_prepare_v3(db, sql.c_str(), sql.size(), 0, &stmt, NULL);
 
-    printf("\n[###################################]\n");
+    if (g_args.verbose)
+        fprintf(g_log, "\n[###################################]\n");
+
     for (const auto &[name, app] : g_application_map) {
         char rx[15], tx[15];
         if (app->pkt_rx > 0 || app->pkt_tx > 0) {
             sqlite3_bind_int(stmt, 1, start_time);
-            sqlite3_bind_int(stmt, 2, update_interval);
+            sqlite3_bind_int(stmt, 2, g_args.interval);
             sqlite3_bind_int(stmt, 3, app->id);
             sqlite3_bind_int(stmt, 4, app->pkt_tx);
             sqlite3_bind_int(stmt, 5, app->pkt_rx);
@@ -202,20 +204,24 @@ int db_insert_traffic() {
 
             int ret = sqlite3_step(stmt);
             if (ret != SQLITE_DONE) {
-                fprintf(
-                    stderr,
-                    "Commit failed while trying to insert session data: %d\n",
-                    ret);
+                if (g_args.debug)
+                    fprintf(g_log,
+                            "Commit failed while trying to insert session "
+                            "data: %d\n",
+                            ret);
             }
 
             sqlite3_reset(stmt);
 
-            printf("[*] %s\n", name.c_str());
-            printf("    rx: %s tx: %s\n",
-                   bytes_to_human_readable(rx, app->pkt_rx, 5),
-                   bytes_to_human_readable(tx, app->pkt_tx, 5));
+            if (g_args.verbose) {
+                fprintf(g_log, "[*] %s\n", name.c_str());
+                fprintf(g_log, "    rx: %s tx: %s\n",
+                        bytes_to_human_readable(rx, app->pkt_rx, 5),
+                        bytes_to_human_readable(tx, app->pkt_tx, 5));
 
-            printf("    tcp: %d udp: %d\n", app->pkt_tcp, app->pkt_udp);
+                fprintf(g_log, "    tcp: %d udp: %d\n", app->pkt_tcp,
+                        app->pkt_udp);
+            }
 
             app->pkt_rx = 0;
             app->pkt_tx = 0;
@@ -247,7 +253,7 @@ int db_insert_application(struct application *app) {
 
     if (ret != SQLITE_OK) {
         fprintf(
-            stderr,
+            g_log,
             "Error inserting new application %s into database with err: %s\n",
             app->name, err);
         return 0;
@@ -257,15 +263,21 @@ int db_insert_application(struct application *app) {
     app->id = new_id;
     application_ids[app->name] = new_id;
 
-    printf("!debug inserted new application %s into database\n", app->name);
+    if (g_args.debug)
+        fprintf(g_log, "Inserted new application %s into database\n",
+                app->name);
 
     return new_id;
 }
 
 void db_update_loop() {
     while (1) {
-        std::this_thread::sleep_for(std::chrono::seconds(update_interval));
-
+        std::this_thread::sleep_for(std::chrono::seconds(g_args.interval));
         db_insert_traffic();
+
+        /* The log file buffer doesn't get flushed for ages if not manually done
+         * since we do not output that much information. Force flush it every
+         * update interval */
+        fflush(g_log);
     }
 }

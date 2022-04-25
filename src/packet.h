@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 
+#include <cstdio>
 #include <ctime>
 
 /* packet direction */
@@ -26,7 +27,7 @@ struct packet {
 };
 
 /* Prints packet information, primarly intended for debug purposes. */
-void print_packet(struct packet *packet, struct application *app);
+void print_packet(struct packet *packet, struct application *app, FILE *fp);
 
 /*
  * Uses the previously found values from get_local_ip_addresses to determine if

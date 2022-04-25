@@ -15,6 +15,7 @@
 #include <unordered_map>
 
 #include "database.h"
+#include "omnis.h"
 
 extern int errno;
 
@@ -50,11 +51,14 @@ void refresh_proc_mappings() {
         auto found = temp_process_map.find(elem.second);
         if (found != temp_process_map.end())
             g_packet_process_map[elem.first] = found->second;
-        else
-            fprintf(stderr,
+        else {
+            if (g_args.debug)
+                fprintf(
+                    g_log,
                     "Could not find socket with inode %lu in any corresponding "
                     "/proc/pid/fd, with hash %s\n",
                     elem.second, elem.first.c_str());
+        }
     }
 
     /* Should we clear these? Perhaps reuse some for efficiency */
@@ -77,7 +81,7 @@ void handle_proc_net_line(const char *buffer) {
                packed_source, &source_port, packed_dest, &dest_port, &inode);
 
     if (matches != 5) {
-        fprintf(stderr, "Malformed line buffer from handle_proc_net_line\n");
+        fprintf(g_log, "Malformed line buffer from handle_proc_net_line\n");
         return;
     }
 
@@ -98,8 +102,9 @@ void handle_proc_net_line(const char *buffer) {
         char port_hash[10];
         snprintf(port_hash, 10, "UDP-%d", source_port);
 
-        if (0)  // debug
-            printf("Adding unconnected UDP Stream with port %d\n", source_port);
+        if (g_args.verbose)
+            fprintf(g_log, "Adding unconnected UDP Stream with port %d\n",
+                    source_port);
 
         temp_inode_map[port_hash] = inode;
         return;
@@ -115,9 +120,10 @@ void handle_proc_net_line(const char *buffer) {
     snprintf(hash, HASHKEYSIZE, "%s:%d-%s:%d", source_str, source_port,
              dest_str, dest_port);
 
-    if (0)  // debug
-        printf("HASHKEYSIZE: %d HASH: %s, for source %s:%d, dest %s:%d\n",
-               HASHKEYSIZE, hash, source_str, source_port, dest_str, dest_port);
+    if (g_args.verbose)
+        fprintf(
+            g_log, "HASHKEYSIZE: %d HASH: %s, | \tsource %s:%d \tdest %s:%d\n",
+            HASHKEYSIZE, hash, source_str, source_port, dest_str, dest_port);
 
     temp_inode_map[hash] = inode;
 }
@@ -125,7 +131,7 @@ void handle_proc_net_line(const char *buffer) {
 void refresh_proc_net_mapping(const char *filename) {
     FILE *proc_net = fopen(filename, "r");
     if (proc_net == NULL) {
-        fprintf(stderr, "Could not access %s, error: %s, exiting.", filename,
+        fprintf(g_log, "Could not access %s, error: %s, exiting.", filename,
                 strerror(errno));
         exit(1);
     }
@@ -148,7 +154,7 @@ void refresh_proc_pid_mapping() {
     DIR *proc = opendir("/proc");
 
     if (proc == NULL) {
-        fprintf(stderr,
+        fprintf(g_log,
                 "Could not access the /proc directory, error: %s exiting.",
                 strerror(errno));
         std::exit(1);
@@ -183,10 +189,12 @@ void handle_pid_dir(const char *pid) {
 
     DIR *fd_dir = opendir(fd_dir_name);
     if (fd_dir == NULL) {
-        fprintf(
-            stderr,
-            "Could not access pid file descriptor directory %s, error: %s\n",
-            fd_dir_name, strerror(errno));
+        if (g_args.debug)
+            fprintf(g_log,
+                    "Could not access pid file descriptor directory %s, error: "
+                    "%s\n",
+                    fd_dir_name, strerror(errno));
+
         return;
     }
 
@@ -258,8 +266,10 @@ void get_comm_name(char *target, const char *pid) {
 
     FILE *comm = fopen(path, "r");
     if (comm == NULL) {
-        fprintf(stderr, "Could not open comm file for pid %s, error: %s\n", pid,
-                strerror(errno));
+        if (g_args.debug)
+            fprintf(g_log, "Could not open comm file for pid %s, error: %s\n",
+                    pid, strerror(errno));
+
         return;
     }
 
@@ -277,8 +287,11 @@ void set_cmdline(char **target, const char *pid) {
 
     FILE *cmdline_file = fopen(path, "r");
     if (cmdline_file == NULL) {
-        fprintf(stderr, "Could not open cmdline file for pid %s, error: %s\n",
-                pid, strerror(errno));
+        if (g_args.debug)
+            fprintf(g_log,
+                    "Could not open cmdline file for pid %s, error: %s\n", pid,
+                    strerror(errno));
+
         *target = (char *)malloc(1);
         (*target)[0] = '\0';
         return;

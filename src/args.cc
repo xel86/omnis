@@ -7,8 +7,6 @@
 #include <string_view>
 #include <vector>
 
-args g_args;
-
 void print_help() {
     printf("Usage: omnis [OPTIONS]...");
     printf("\nNetwork monitoring daemon & cli application.");
@@ -60,6 +58,7 @@ int parse_args(int argc, char **argv, struct args *args) {
         }
 
         if (arg == "-v" || arg == "--verbose") {
+            args->debug = true;
             args->verbose = true;
         }
 

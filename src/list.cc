@@ -46,17 +46,17 @@ int ip_list_contains(struct ip_list &ip_list, const in_addr_t ip) {
     return 0;
 }
 
-void print_ip_list(struct ip_list *ip_list) {
+void print_ip_list(struct ip_list *ip_list, FILE *fp) {
     struct ip_list *cursor = ip_list;
     if (ip_list == NULL) {
-        printf("[]");
+        fprintf(fp, "[]");
         return;
     }
 
-    printf("ip_list: [\n");
+    fprintf(fp, "ip_list: [\n");
     while (cursor != NULL) {
-        printf("          %s\n", inet_ntoa(cursor->ip_address));
+        fprintf(fp, "          %s\n", inet_ntoa(cursor->ip_address));
         cursor = cursor->next;
     }
-    printf("         ]\n");
+    fprintf(fp, "         ]\n");
 }

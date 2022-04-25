@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "list.h"
+#include "omnis.h"
 #include "packet.h"
 #include "proc.h"
 
@@ -28,13 +29,22 @@ void try_resolve_packets() {
         if (found != g_packet_process_map.end()) {
             found->second->pkt_tx += e.second.pkt_tx;
             found->second->pkt_rx += e.second.pkt_rx;
+            found->second->pkt_tx_c += e.second.pkt_tx_c;
+            found->second->pkt_rx_c += e.second.pkt_rx_c;
+            found->second->pkt_tcp += e.second.pkt_tcp;
+            found->second->pkt_udp += e.second.pkt_udp;
 
-            fprintf(stderr, "Connected packets to %s\n", found->second->name);
+            if (g_args.debug)
+                fprintf(g_log, "Connected previously lost packets to %s\n",
+                        found->second->name);
         } else {
-            fprintf(
-                stderr,
-                "Couldn't connect packets (tx: %llu rx: %llu) with hash %s\n",
-                e.second.pkt_tx, e.second.pkt_rx, e.first.c_str());
+            if (g_args.debug)
+                fprintf(g_log,
+                        "Couldn't connect packets (tx: %llu rx: %llu tcp: %d "
+                        "udp %d) with "
+                        "hash %s\n",
+                        e.second.pkt_tx, e.second.pkt_rx, e.second.pkt_tcp,
+                        e.second.pkt_udp, e.first.c_str());
         }
     }
 
@@ -69,9 +79,9 @@ int should_disregard_packet(const struct packet *packet) {
 void get_local_ip_addresses(const char *device_name) {
     struct ifaddrs *interface_addresses, *ifaddress;
     if (getifaddrs(&interface_addresses) < 0) {
-        fprintf(stderr,
+        fprintf(g_log,
                 "Unable to access local interface addresses from ifaddrs for "
-                "device %s",
+                "device %s. Exiting.",
                 device_name);
         exit(1);
     }
@@ -85,8 +95,9 @@ void get_local_ip_addresses(const char *device_name) {
         ip_address.s_addr =
             ((struct sockaddr_in *)ifaddress->ifa_addr)->sin_addr.s_addr;
 
-        fprintf(stderr, "Local IP Address found for device %s: %s\n",
-                device_name, inet_ntoa(ip_address));
+        if (g_args.debug)
+            fprintf(g_log, "Local IP Address found for device %s: %s\n",
+                    device_name, inet_ntoa(ip_address));
 
         /* If address starts with 192.168.x.x push to the front of the list */
         if (ip_address.s_addr >= 43200) {
@@ -146,9 +157,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
             break;
 
         default:
-            if (0)  // debug
-                printf("\n!! Got Unknown Packet With Protocol Number %d !!\n",
-                       ip_header->protocol);
             return;
     }
 
@@ -225,15 +233,9 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header,
         packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
     } else if (packet.direction == INCOMING_DIRECTION) {
         app->pkt_rx += packet.len;
-        app->pkt_tx_c++;
+        app->pkt_rx_c++;
         packet.protocol == IPPROTO_TCP ? app->pkt_tcp++ : app->pkt_udp++;
     }
 
     resolve_interval++;
-
-    if (0) {  // debug
-        if (ip_header->protocol == IPPROTO_TCP ||
-            ip_header->protocol == IPPROTO_UDP)
-            print_packet(&packet, app.get());
-    }
 }
