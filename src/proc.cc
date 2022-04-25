@@ -41,7 +41,6 @@ void refresh_proc_mappings() {
      * Perhaps keep a running set of pid's in /proc and only refresh all if we
      * can't find the new socket in a new pid folder? */
     g_packet_process_map.clear();
-    g_application_map.clear();
 
     refresh_proc_pid_mapping();
     refresh_proc_net_mapping("/proc/net/tcp");
