@@ -46,8 +46,8 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
       .send({ message: 'Start and End datetimes required!' });
   }
 
-  const start = Date.parse(req.query.start.toString());
-  const end = Date.parse(req.query.end.toString());
+  const start = Math.floor(Date.parse(req.query.start.toString()) / 1000);
+  const end = Math.floor(Date.parse(req.query.end.toString()) / 1000);
 
   if (isNaN(start) || isNaN(end)) {
     return res.status(httpStatusCodes.BAD_REQUEST).send({
