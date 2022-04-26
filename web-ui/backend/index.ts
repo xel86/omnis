@@ -73,27 +73,29 @@ app.get('/data', async (req: Request, res: Response): Promise<Response> => {
       },
     });
 
-    data = app_session.map((val) => {
-      const application: App = {
-        id: val.id,
-        name: val.name,
-        colorHex: val.colorHex,
-      };
+    app_session.map((val) => {
+      if (val.Session.length > 0) {
+        const application: App = {
+          id: val.id,
+          name: val.name,
+          colorHex: val.colorHex,
+        };
 
-      const sessions: Session[] = val.Session.map((s) => ({
-        start: s.start,
-        durationSec: s.durationSec,
-        applicationId: s.applicationId,
-        bytesTx: s.bytesTx,
-        bytesRx: s.bytesRx,
-        pktTx: s.pktTx,
-        pktRx: s.pktRx,
-        pktTotal: s.pktTx + s.pktRx,
-        pktTcp: s.pktTcp,
-        pktUdp: s.pktUdp,
-      }));
+        const sessions: Session[] = val.Session.map((s) => ({
+          start: s.start,
+          durationSec: s.durationSec,
+          applicationId: s.applicationId,
+          bytesTx: s.bytesTx,
+          bytesRx: s.bytesRx,
+          pktTx: s.pktTx,
+          pktRx: s.pktRx,
+          pktTotal: s.pktTx + s.pktRx,
+          pktTcp: s.pktTcp,
+          pktUdp: s.pktUdp,
+        }));
 
-      return { application, sessions };
+        data.push({ application, sessions });
+      }
     });
   } catch (e) {
     if (e instanceof PrismaClientKnownRequestError) {

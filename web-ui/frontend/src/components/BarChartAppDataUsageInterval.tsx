@@ -61,7 +61,8 @@ function BarChartAppDataUsagePerInterval(
     });
 
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
-    tmpLabels.forEach((l) => tmpData.labels.push(new Date(l))); // Push labels into tmpData as Date type
+    tmpLabels.forEach((l) => tmpData.labels.push(new Date(l * 1000))); // Push labels into tmpData as Date type
+    tmpLabels.sort((a, b) => a - b);
 
     let max = 0;
     props.appSessions.forEach((appSess) => {
