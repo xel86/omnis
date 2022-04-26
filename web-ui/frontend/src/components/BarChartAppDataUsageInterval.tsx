@@ -51,6 +51,24 @@ function BarChartAppDataUsagePerInterval(
     const msInterval =
       parseInt(interval.substring(0, interval.indexOf(' '))) *
       (interval.includes('MIN') ? MS_MINUTE : MS_HOUR);
+
+    const allLabels: number[] = [];
+    props.appSessions.forEach((appSess) => {
+      appSess.sessions.forEach((sess) => {
+        if (allLabels.length === 0) allLabels.push(sess.start);
+        if (!allLabels.includes(sess.start)) allLabels.push(sess.start);
+      });
+    });
+    allLabels.sort((a, b) => a - b);
+
+    let prevLabel = 0;
+    allLabels.forEach((tmp, i) => {
+      if ((tmp - prevLabel) * 1000 >= msInterval) {
+        tmpLabels.push(tmp);
+        prevLabel = tmp;
+      }
+    });
+
     props.appSessions.forEach((appSess) => {
       appSess.sessions.forEach((sess) => {
         if (tmpLabels.length === 0) tmpLabels.push(sess.start);
@@ -59,7 +77,6 @@ function BarChartAppDataUsagePerInterval(
         }
       });
     });
-    tmpLabels.sort((a, b) => a - b);
 
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
     tmpLabels.forEach((l) => tmpData.labels.push(new Date(l * 1000))); // Push labels into tmpData as Date type
@@ -72,6 +89,7 @@ function BarChartAppDataUsagePerInterval(
         data: [] as number[],
         borderColor: color,
         backgroundColor: addAlpha(color, 0.5),
+        barThickness: 20,
       };
 
       const data: number[] = [];

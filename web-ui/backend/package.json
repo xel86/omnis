@@ -6,7 +6,8 @@
   "author": "Kita Pairojtanachai",
   "license": "GPL-3.0",
   "scripts": {
-    "start:dev": "nodemon ./index.ts"
+    "start:dev": "nodemon ./index.ts",
+    "start:prod": "PORT=29687 && nodemon ./index.ts"
   },
   "dependencies": {
     "@prisma/client": "^3.10.0",

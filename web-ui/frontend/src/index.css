@@ -91,7 +91,7 @@ code {
 }
 
 .app-grid {
-  @apply w-full h-full pt-4 grid grid-flow-col gap-4 auto-cols-max overflow-y-scroll;
+  @apply w-full h-full pt-4 grid grid-flow-row grid-cols-3 gap-4 overflow-y-scroll;
 }
 
 .app-grid-item {

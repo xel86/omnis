@@ -105,7 +105,9 @@ function App() {
     const getApplicationsIntervalId = setInterval(
       async () => {
         const apps = await getApplications();
-        if (apps) setApps(apps);
+        console.log(apps?.sort());
+
+        if (apps) setApps(apps.sort((a, b) => a.name.localeCompare(b.name)));
       },
       apps.length > 0 ? 10000 : 1000
     );

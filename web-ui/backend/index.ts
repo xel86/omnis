@@ -3,21 +3,15 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
 import httpStatusCodes from 'http-status-codes';
-import * as os from 'os';
-import * as fs from 'fs';
-import * as ini from 'ini';
 import { Application as App, Session, AppSession } from './interfaces';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 if (process.env.NODE_ENV === 'production') console.log = () => {};
 
-const config = ini.parse(
-  fs.readFileSync(os.homedir + '/.config/omnis/config.ini', 'utf-8')
-);
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: `file:${os.homedir + config.database.url}`,
+      url: `file:/var/lib/omnis/omnis.db`,
     },
   },
 });
