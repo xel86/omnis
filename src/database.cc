@@ -16,7 +16,6 @@
 #include "proc.h"
 
 sqlite3 *db;
-time_t start_time;
 
 std::unordered_map<std::string, int> application_ids;
 
@@ -130,7 +129,6 @@ int db_load() {
     root_get_or_create_db_path(&db_path);
 
     int err = sqlite3_open(db_path.c_str(), &db);
-    start_time = std::time(NULL);
     sqlite3_stmt *stmt;
 
     if (err) {
@@ -189,10 +187,11 @@ int db_insert_traffic() {
     if (g_args.verbose)
         fprintf(g_log, "\n[###################################]\n");
 
+    time_t start_time = std::time(NULL);
     for (const auto &[name, app] : g_application_map) {
         char rx[15], tx[15];
         if (app->pkt_rx > 0 || app->pkt_tx > 0) {
-            sqlite3_bind_int(stmt, 1, start_time);
+            sqlite3_bind_int(stmt, 1, (start_time - g_args.interval));
             sqlite3_bind_int(stmt, 2, g_args.interval);
             sqlite3_bind_int(stmt, 3, app->id);
             sqlite3_bind_int(stmt, 4, app->pkt_tx);
