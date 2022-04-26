@@ -7,7 +7,7 @@ interface PaneTxProps {
 }
 
 function PaneTx(props: PaneTxProps) {
-  const [unitIndex, setUnitIndex] = useState(1);
+  const [unitIndex, setUnitIndex] = useState(2);
 
   return (
     <div className="block-tx-rx">

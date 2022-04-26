@@ -12,7 +12,6 @@ import PieChartAppDataUsage from './components/PieChartAppDataUsage';
 import PieChartAppPackets from './components/PieChartAppPackets';
 import LineChartAppTcp from './components/LineChartAppTcp';
 import LineChartAppUdp from './components/LineChartAppUdp';
-import PieChartAppTcpUdpPackets from './components/PieChartAppTcpUdpPackets';
 
 const MS_MINUTE = 60000;
 
@@ -335,15 +334,6 @@ function App() {
             </div>
             <div className="col-span-2">
               <LineChartAppUdp
-                appSessions={selectedAppSessions}
-                start={start}
-                end={end}
-                isDarkMode={isDarkMode}
-              />
-            </div>
-
-            <div className="col-span-2">
-              <PieChartAppTcpUdpPackets
                 appSessions={selectedAppSessions}
                 start={start}
                 end={end}

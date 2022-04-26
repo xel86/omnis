@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppSession, Session } from '../interfaces';
 import { convertToUnit, UNITS } from '../units';
 
@@ -6,7 +6,6 @@ import Chart from 'chart.js/auto';
 import { ChartDataset } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-moment';
-import React from 'react';
 
 interface LineChartAppDataUsageProps {
   appSessions: AppSession[];
@@ -28,7 +27,7 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
     datasets: [] as ChartDataset[],
   });
   const [yLimits, setYLimits] = useState({ min: 0, max: 1 });
-  const [unitIndex, setUnitIndex] = useState(1);
+  const [unitIndex, setUnitIndex] = useState(2);
 
   useEffect(() => {
     // Populate all possible label values as Unix time for faster comparison
@@ -39,10 +38,10 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
         if (!tmpLabels.includes(sess.start)) tmpLabels.push(sess.start);
       });
     });
+    tmpLabels.sort((a, b) => a - b);
 
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
     tmpLabels.forEach((l) => tmpData.labels.push(new Date(l * 1000))); // Push labels into tmpData as Date type
-    tmpLabels.sort((a, b) => a - b);
 
     let max = 0;
     let min = 0;
@@ -241,4 +240,4 @@ function LineChartAppDataUsage(props: LineChartAppDataUsageProps) {
   );
 }
 
-export default React.memo(LineChartAppDataUsage);
+export default LineChartAppDataUsage;

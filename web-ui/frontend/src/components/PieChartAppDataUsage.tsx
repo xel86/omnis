@@ -35,7 +35,7 @@ function PieChartAppDataUsage(props: PieChartAppDataUsageProps) {
     labels: [] as string[],
     datasets: [] as ChartDataset[],
   });
-  const [unitIndex, setUnitIndex] = useState(1);
+  const [unitIndex, setUnitIndex] = useState(2);
 
   useEffect(() => {
     const tmpData = {

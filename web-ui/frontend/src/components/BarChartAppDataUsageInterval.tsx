@@ -42,7 +42,7 @@ function BarChartAppDataUsagePerInterval(
   });
   const [yMax, setYMax] = useState(10);
   const [interval, setInterval] = useState(INTERVALS[0]);
-  const [unitIndex, setUnitIndex] = useState(1);
+  const [unitIndex, setUnitIndex] = useState(2);
 
   useEffect(() => {
     // Populate all possible label values as Unix time for faster comparison
@@ -59,10 +59,10 @@ function BarChartAppDataUsagePerInterval(
         }
       });
     });
+    tmpLabels.sort((a, b) => a - b);
 
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
     tmpLabels.forEach((l) => tmpData.labels.push(new Date(l * 1000))); // Push labels into tmpData as Date type
-    tmpLabels.sort((a, b) => a - b);
 
     let max = 0;
     props.appSessions.forEach((appSess) => {

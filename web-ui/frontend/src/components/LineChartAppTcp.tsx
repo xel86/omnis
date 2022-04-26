@@ -36,10 +36,10 @@ function LineChartAppTcp(props: LineChartAppTcp) {
         if (!tmpLabels.includes(sess.start)) tmpLabels.push(sess.start);
       });
     });
+    tmpLabels.sort((a, b) => a - b);
 
     const tmpData = { labels: [] as Date[], datasets: [] as ChartDataset[] };
     tmpLabels.forEach((l) => tmpData.labels.push(new Date(l * 1000))); // Push labels into tmpData as Date type
-    tmpLabels.sort((a, b) => a - b);
 
     let max = 0;
     let min = 0;
