@@ -7,6 +7,7 @@
  * All values will be in bytes, not bits. i.e MB/s not Mbps.
  * Sets char *str to a null terminated string with the result.
  * char* str MUST be preallocated with enough space for 15 chars */
-char *bytes_to_human_readable(char *str, double bytes, unsigned seconds);
+char *bytes_to_human_overtime(char *str, double bytes, unsigned seconds);
 
+char *bytes_to_human(char *str, double bytes);
 #endif

@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "args.h"
+#include "cli.h"
 #include "database.h"
 #include "human.h"
 #include "list.h"
@@ -82,12 +83,14 @@ int main(int argc, char **argv) {
     parse_args(argc, argv, &g_args);
 
     if (!g_args.daemon) {
-        printf("Not in daemon mode! :)\n");
+        g_log = stdout;
+        db_load();
+
+        display_usage_table(30);
         exit(1);
     }
 
     daemonize();
-
     db_load();
 
     pcap_if_t *devices, *device;

@@ -5,6 +5,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "application.h"
 
@@ -29,6 +30,10 @@ int db_generate_schema();
  * existing application ids and names into application maps */
 int db_load();
 
+/* Loads the Application table into a map with the keys being the name of the
+ * application and the key being their associated id */
+void db_load_applications(std::unordered_map<std::string, int> &apps);
+
 /* Offloads application traffic data from g_application_map accumulated during
  * the time interval into the database and resets
  * the application traffic struct values. */
@@ -42,4 +47,8 @@ int db_insert_application(struct application *app);
  * every X secs. */
 void db_update_loop();
 
+/* Iterate over every session for each application in the database for the past
+ * specified days and accumulate the traffic used for the time period */
+void db_fetch_usage_over_timeframe(
+    std::unordered_map<std::string, struct application> &apps, int days);
 #endif

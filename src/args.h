@@ -10,6 +10,7 @@ struct args {
     bool verbose; /* verbose mode (even more info than debug) */
     bool daemon;  /* flag to determine if we are launched the daemon or cli */
     int interval; /* interval to update database in seconds */
+    int days;     /* Days for usage traffic summation */
 };
 
 void print_help();

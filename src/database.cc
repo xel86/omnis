@@ -9,6 +9,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "application.h"
 #include "human.h"
@@ -18,6 +19,10 @@
 sqlite3 *db;
 
 std::unordered_map<std::string, int> application_ids;
+time_t time_cursor;
+
+/* 5 second interval to deposit into database */
+int update_interval = 5;
 
 /* I wrote this for non-root before realizing it will be running as root. */
 int user_get_or_create_db_path(std::string *path) {
@@ -150,10 +155,17 @@ int db_load() {
 
     sqlite3_finalize(stmt);
 
-    fprintf(g_log, "Loaded existing database successfully.\n");
+    db_load_applications(application_ids);
 
-    // load application ids
+    if (g_args.daemon)
+        fprintf(g_log, "Loaded existing database successfully.\n");
 
+    time_cursor = std::time(NULL);
+    return 0;
+}
+
+void db_load_applications(std::unordered_map<std::string, int> &apps) {
+    sqlite3_stmt *stmt;
     const char *sql2 = "SELECT id, name FROM Application;";
 
     sqlite3_prepare_v3(db, sql2, strlen(sql2), 0, &stmt, NULL);
@@ -163,11 +175,10 @@ int db_load() {
         name = std::string(
             reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)));
 
-        application_ids[name] = id;
+        apps[name] = id;
     }
 
     sqlite3_finalize(stmt);
-    return 0;
 }
 
 int db_insert_traffic() {
@@ -187,11 +198,11 @@ int db_insert_traffic() {
     if (g_args.verbose)
         fprintf(g_log, "\n[###################################]\n");
 
-    time_t start_time = std::time(NULL);
+    time_cursor += g_args.interval;
     for (const auto &[name, app] : g_application_map) {
         char rx[15], tx[15];
         if (app->pkt_rx > 0 || app->pkt_tx > 0) {
-            sqlite3_bind_int(stmt, 1, (start_time - g_args.interval));
+            sqlite3_bind_int(stmt, 1, time_cursor);
             sqlite3_bind_int(stmt, 2, g_args.interval);
             sqlite3_bind_int(stmt, 3, app->id);
             sqlite3_bind_int(stmt, 4, app->pkt_tx);
@@ -215,8 +226,8 @@ int db_insert_traffic() {
             if (g_args.verbose) {
                 fprintf(g_log, "[*] %s\n", name.c_str());
                 fprintf(g_log, "    rx: %s tx: %s\n",
-                        bytes_to_human_readable(rx, app->pkt_rx, 5),
-                        bytes_to_human_readable(tx, app->pkt_tx, 5));
+                        bytes_to_human_overtime(rx, app->pkt_rx, 5),
+                        bytes_to_human_overtime(tx, app->pkt_tx, 5));
 
                 fprintf(g_log, "    tcp: %d udp: %d\n", app->pkt_tcp,
                         app->pkt_udp);
@@ -279,4 +290,51 @@ void db_update_loop() {
          * update interval */
         fflush(g_log);
     }
+}
+
+void db_fetch_usage_over_timeframe(
+    std::unordered_map<std::string, struct application> &apps, int days) {
+    time_t start_time = std::time(NULL) - (days * 24 * 60 * 60);
+
+    /* Flip application_ids map loaded in from db_load() so that id is the key
+     * and the name is the value instead */
+    std::unordered_map<int, std::string> app_ids;
+    for (auto i = application_ids.begin(); i != application_ids.end(); ++i)
+        app_ids[i->second] = i->first;
+
+    char sql[256];
+    sqlite3_stmt *stmt;
+
+    snprintf(sql, 256, "SELECT * FROM Session WHERE start >= %ld;", start_time);
+
+    sqlite3_prepare_v3(db, sql, strlen(sql), 0, &stmt, NULL);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 2);
+
+        auto found = apps.find(app_ids[id]);
+        if (found == apps.end()) {
+            struct application new_app;
+            strncpy(new_app.name, app_ids[id].c_str(), 16);
+
+            new_app.pkt_tx = 0;
+            new_app.pkt_rx = 0;
+            new_app.pkt_tx_c = 0;
+            new_app.pkt_rx_c = 0;
+            new_app.pkt_tcp = 0;
+            new_app.pkt_udp = 0;
+
+            apps[new_app.name] = new_app;
+        }
+
+        struct application &app = apps[app_ids[id]];
+
+        app.pkt_tx += sqlite3_column_int64(stmt, 3);
+        app.pkt_rx += sqlite3_column_int64(stmt, 4);
+        app.pkt_tx_c += sqlite3_column_int(stmt, 5);
+        app.pkt_rx_c += sqlite3_column_int(stmt, 6);
+        app.pkt_tcp += sqlite3_column_int(stmt, 7);
+        app.pkt_udp += sqlite3_column_int(stmt, 8);
+    }
+
+    sqlite3_finalize(stmt);
 }
