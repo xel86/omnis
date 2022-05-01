@@ -293,8 +293,13 @@ void db_update_loop() {
 }
 
 void db_fetch_usage_over_timeframe(
-    std::unordered_map<std::string, struct application> &apps, int days) {
-    time_t start_time = std::time(NULL) - (days * 24 * 60 * 60);
+    std::unordered_map<std::string, struct application> &apps,
+    struct timeframe time) {
+    time_t days = time.days * 24 * 60 * 60;
+    time_t hours = time.hours * 60 * 60;
+    time_t minutes = time.minutes * 60;
+
+    time_t start_time = std::time(NULL) - days - hours - minutes;
 
     /* Flip application_ids map loaded in from db_load() so that id is the key
      * and the name is the value instead */

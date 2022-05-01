@@ -1,6 +1,8 @@
 #ifndef ARGS_H
 #define ARGS_H
 
+#include "database.h"
+
 /*
  * used as a global struct that carries user options to determine program
  * state. Includes options given by command line arguments and config files.
@@ -10,7 +12,7 @@ struct args {
     bool verbose; /* verbose mode (even more info than debug) */
     bool daemon;  /* flag to determine if we are launched the daemon or cli */
     int interval; /* interval to update database in seconds */
-    int days;     /* Days for usage traffic summation */
+    struct timeframe time; /* timeframe to sum application data usage for */
 };
 
 void print_help();

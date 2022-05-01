@@ -9,6 +9,13 @@
 
 #include "application.h"
 
+struct timeframe {
+    int days;
+    int hours;
+    int minutes;
+    int seconds;
+};
+
 /* sqlite3 object to interact with database. This will not be touched outside of
  * db_* functions. */
 extern sqlite3 *db;
@@ -50,5 +57,6 @@ void db_update_loop();
 /* Iterate over every session for each application in the database for the past
  * specified days and accumulate the traffic used for the time period */
 void db_fetch_usage_over_timeframe(
-    std::unordered_map<std::string, struct application> &apps, int days);
+    std::unordered_map<std::string, struct application> &apps,
+    struct timeframe time);
 #endif

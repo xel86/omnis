@@ -27,9 +27,16 @@ void print_help() {
         "\n  --daemon            \tUsed to launch initial daemon process to "
         "monitor traffic");
     printf("\nCLI Arguments:\n");
+    printf("If no arguments provided, will default to 1 day timeframe.\n");
     printf(
         "\n  -d, --days [int]    \tSpecify how many past days to sum "
-        "application traffic usage for. Default: 1");
+        "application traffic usage for.");
+    printf(
+        "\n  -h, --hours [int]   \tSpecify how many past hours to sum "
+        "application traffic usage for.");
+    printf(
+        "\n  -m, --minutes [int] \tSpecify how many past minutes to sum "
+        "application traffic usage for.");
 }
 
 int parse_args(int argc, char **argv, struct args *args) {
@@ -43,13 +50,15 @@ int parse_args(int argc, char **argv, struct args *args) {
     args->debug = false;
     args->verbose = false;
     args->interval = 5;
-    args->days = 1;
+    args->time = {0, 0, 0};
+
+    bool timeframe_set = false;
 
     const std::vector<std::string_view> arg_list(argv + 1, argv + argc);
     for (auto it = arg_list.begin(), end = arg_list.end(); it != end; ++it) {
         std::string_view arg{*it};
 
-        if (arg == "-h" || arg == "--help") {
+        if (arg == "--help") {
             print_help();
             exit(1);
         }
@@ -90,7 +99,7 @@ int parse_args(int argc, char **argv, struct args *args) {
         if (arg == "-d" || arg == "--days") {
             if (it + 1 != end) {
                 try {
-                    args->days = std::stoi(std::string(*(it + 1)));
+                    args->time.days = std::stoi(std::string(*(it + 1)));
                 } catch (const std::invalid_argument &ia) {
                     fprintf(stderr,
                             "The days argument (-d, --days) requires an "
@@ -104,7 +113,56 @@ int parse_args(int argc, char **argv, struct args *args) {
                         "integer.\n");
                 exit(1);
             }
+
+            timeframe_set = true;
         }
+
+        if (arg == "-h" || arg == "--hours") {
+            if (it + 1 != end) {
+                try {
+                    args->time.hours = std::stoi(std::string(*(it + 1)));
+                } catch (const std::invalid_argument &ia) {
+                    fprintf(stderr,
+                            "The hours argument (-h, --hours) requires an "
+                            "integer. Invalid argument: %s\n",
+                            ia.what());
+                    exit(1);
+                }
+            } else {
+                fprintf(stderr,
+                        "The hours argument (-h, --hours) requires an "
+                        "integer.\n");
+                exit(1);
+            }
+
+            timeframe_set = true;
+        }
+
+        if (arg == "-m" || arg == "--minutes") {
+            if (it + 1 != end) {
+                try {
+                    args->time.minutes = std::stoi(std::string(*(it + 1)));
+                } catch (const std::invalid_argument &ia) {
+                    fprintf(stderr,
+                            "The days argument (-m, --minutes) requires an "
+                            "integer. Invalid argument: %s\n",
+                            ia.what());
+                    exit(1);
+                }
+            } else {
+                fprintf(stderr,
+                        "The days argument (-m, --minutes) requires an "
+                        "integer.\n");
+                exit(1);
+            }
+
+            timeframe_set = true;
+        }
+    }
+
+    if (!timeframe_set) {
+        /* If days, hours, or minutes have not been set, default to 1 day */
+        args->time = {1, 0, 0};
     }
 
     return 0;

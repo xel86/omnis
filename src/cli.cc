@@ -9,9 +9,9 @@
 #include "database.h"
 #include "human.h"
 
-void display_usage_table(int days) {
+void display_usage_table(struct timeframe time) {
     std::unordered_map<std::string, struct application> apps;
-    db_fetch_usage_over_timeframe(apps, days);
+    db_fetch_usage_over_timeframe(apps, time);
 
     std::vector<struct application> sorted;
     for (auto &it : apps) {
