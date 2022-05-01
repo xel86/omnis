@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         g_log = stdout;
         db_load();
 
-        display_usage_table(30);
+        display_usage_table(g_args.days);
         exit(1);
     }
 
