@@ -10,7 +10,7 @@
 #include "database.h"
 #include "human.h"
 
-void display_usage_table(struct timeframe time, enum sort sort) {
+void display_usage_table(struct timeframe time, enum sort sort, int show) {
     std::unordered_map<std::string, struct application> apps;
     db_fetch_usage_over_timeframe(apps, time);
 
@@ -39,6 +39,10 @@ void display_usage_table(struct timeframe time, enum sort sort) {
                   [](struct application &a, struct application &b) {
                       return a.pkt_tx < b.pkt_tx;
                   });
+    }
+
+    if (show >= 0) {
+        sorted.resize(show);
     }
 
     printf("\n| Application      | Rx        | Tx        |\n");

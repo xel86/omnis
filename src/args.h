@@ -22,6 +22,7 @@ struct args {
     int interval; /* interval to update database in seconds */
     struct timeframe time; /* timeframe to sum application data usage for */
     enum sort sort;        /* Sort preference for table */
+    int rows_shown; /* Amount of rows shown on the tabls, truncating rest. */
 };
 
 void print_help();

@@ -38,8 +38,11 @@ void print_help() {
         "\n  -m, --minutes [int] \tSpecify how many past minutes to sum "
         "application traffic usage for.");
     printf(
-        "\n  --sort [sort]    \tSpecify the sort preference for table; "
+        "\n  --sort [sort]       \tSpecify the sort preference for table; "
         "Descending based on either \"rx\" or \"tx\". Default: rx");
+    printf(
+        "\n  --show [int]        \tSpecify how many rows on the table will be "
+        "shown, truncating the rest. Defaults to showing all rows.");
 }
 
 int parse_args(int argc, char **argv, struct args *args) {
@@ -55,6 +58,7 @@ int parse_args(int argc, char **argv, struct args *args) {
     args->interval = 5;
     args->time = {0, 0, 0};
     args->sort = RX_DESC;
+    args->rows_shown = -1;
 
     bool timeframe_set = false;
 
@@ -183,6 +187,26 @@ int parse_args(int argc, char **argv, struct args *args) {
                         "The sort argument (--sort) requires "
                         "a string specifing a sorting preference. Options: "
                         "rx, tx. Example: --sort tx\n");
+                exit(1);
+            }
+        }
+
+        if (arg == "--show") {
+            if (it + 1 != end) {
+                try {
+                    args->rows_shown = std::stoi(std::string(*(it + 1)));
+                } catch (const std::invalid_argument &ia) {
+                    fprintf(stderr,
+                            "The show argument (--show) requires an "
+                            "integer indicating the amount of rows to show. "
+                            "Invalid argument: %s\n",
+                            ia.what());
+                    exit(1);
+                }
+            } else {
+                fprintf(stderr,
+                        "The show argument (--show) requires an "
+                        "integer indicating the amount of rows to show.\n");
                 exit(1);
             }
         }

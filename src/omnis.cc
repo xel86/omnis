@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         g_log = stdout;
         db_load();
 
-        display_usage_table(g_args.time, g_args.sort);
+        display_usage_table(g_args.time, g_args.sort, g_args.rows_shown);
         exit(1);
     }
 
