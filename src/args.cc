@@ -37,6 +37,9 @@ void print_help() {
     printf(
         "\n  -m, --minutes [int] \tSpecify how many past minutes to sum "
         "application traffic usage for.");
+    printf(
+        "\n  --sort [sort]    \tSpecify the sort preference for table; "
+        "Descending based on either \"rx\" or \"tx\". Default: rx");
 }
 
 int parse_args(int argc, char **argv, struct args *args) {
@@ -51,6 +54,7 @@ int parse_args(int argc, char **argv, struct args *args) {
     args->verbose = false;
     args->interval = 5;
     args->time = {0, 0, 0};
+    args->sort = RX_DESC;
 
     bool timeframe_set = false;
 
@@ -157,6 +161,30 @@ int parse_args(int argc, char **argv, struct args *args) {
             }
 
             timeframe_set = true;
+        }
+
+        if (arg == "--sort") {
+            if (it + 1 != end) {
+                std::string_view pref = *(it + 1);
+
+                if (pref == "tx" || pref == "TX")
+                    args->sort = TX_DESC;
+                else if (pref == "rx" || pref == "RX")
+                    args->sort = RX_DESC;
+                else {
+                    fprintf(stderr,
+                            "The sort argument (--sort) requires "
+                            "a string specifing a sorting preference. Options: "
+                            "rx, tx. Example: --sort tx\n");
+                    exit(1);
+                }
+            } else {
+                fprintf(stderr,
+                        "The sort argument (--sort) requires "
+                        "a string specifing a sorting preference. Options: "
+                        "rx, tx. Example: --sort tx\n");
+                exit(1);
+            }
         }
     }
 
