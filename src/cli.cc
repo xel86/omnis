@@ -41,7 +41,7 @@ void display_usage_table(struct timeframe time, enum sort sort, int show) {
                   });
     }
 
-    if (show >= 0) {
+    if (show >= 0 && sorted.size() > show) {
         sorted.resize(show);
     }
 
