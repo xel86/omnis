@@ -317,28 +317,28 @@ void db_fetch_usage_over_timeframe(
         int id = sqlite3_column_int(stmt, 2);
 
         auto found = apps.find(app_ids[id]);
-        if (found == apps.end()) {
+        if (found != apps.end()) {
+            struct application &app = found->second;
+
+            app.pkt_tx += sqlite3_column_int64(stmt, 3);
+            app.pkt_rx += sqlite3_column_int64(stmt, 4);
+            app.pkt_tx_c += sqlite3_column_int(stmt, 5);
+            app.pkt_rx_c += sqlite3_column_int(stmt, 6);
+            app.pkt_tcp += sqlite3_column_int(stmt, 7);
+            app.pkt_udp += sqlite3_column_int(stmt, 8);
+        } else {
             struct application new_app;
             strncpy(new_app.name, app_ids[id].c_str(), 16);
 
-            new_app.pkt_tx = 0;
-            new_app.pkt_rx = 0;
-            new_app.pkt_tx_c = 0;
-            new_app.pkt_rx_c = 0;
-            new_app.pkt_tcp = 0;
-            new_app.pkt_udp = 0;
+            new_app.pkt_tx = sqlite3_column_int64(stmt, 3);
+            new_app.pkt_rx = sqlite3_column_int64(stmt, 4);
+            new_app.pkt_tx_c = sqlite3_column_int(stmt, 5);
+            new_app.pkt_rx_c = sqlite3_column_int(stmt, 6);
+            new_app.pkt_tcp = sqlite3_column_int(stmt, 7);
+            new_app.pkt_udp = sqlite3_column_int(stmt, 8);
 
             apps[new_app.name] = new_app;
         }
-
-        struct application &app = apps[app_ids[id]];
-
-        app.pkt_tx += sqlite3_column_int64(stmt, 3);
-        app.pkt_rx += sqlite3_column_int64(stmt, 4);
-        app.pkt_tx_c += sqlite3_column_int(stmt, 5);
-        app.pkt_rx_c += sqlite3_column_int(stmt, 6);
-        app.pkt_tcp += sqlite3_column_int(stmt, 7);
-        app.pkt_udp += sqlite3_column_int(stmt, 8);
     }
 
     sqlite3_finalize(stmt);
