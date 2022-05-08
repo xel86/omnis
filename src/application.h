@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 struct application {
@@ -18,6 +19,21 @@ struct application {
     int pkt_tcp;               /* number of tcp packets */
     int pkt_udp;               /* number of udp packets */
     time_t start_time;         /* timestamp for when application detected */
+
+    application(const char *comm) {
+        id = 0;
+        pkt_rx = 0;
+        pkt_tx = 0;
+        pkt_rx_c = 0;
+        pkt_tx_c = 0;
+        pkt_tcp = 0;
+        pkt_udp = 0;
+        pid = 0;
+        strncpy(name, comm, 16);
+        start_time = std::time(NULL);
+    }
+
+    application() {}
 
     ~application() {}
 };

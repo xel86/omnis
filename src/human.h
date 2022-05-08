@@ -1,6 +1,8 @@
 #ifndef HUMAN_H
 #define HUMAN_H
 
+#include <ctime>
+
 /* Converts bytes over a time period to a human readable format.
  * Example 10000 bytes over 10 seconds will be 1.0 KB/s
  * Byte postfix will be determined based on keeping the result below 100.0
@@ -10,4 +12,7 @@
 char *bytes_to_human_overtime(char *str, double bytes, unsigned seconds);
 
 char *bytes_to_human(char *str, double bytes);
+
+/* Converts unix timestamp into str with month/day */
+char *timestamp_to_human(char *str, time_t time);
 #endif

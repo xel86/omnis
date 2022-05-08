@@ -43,6 +43,10 @@ void print_help() {
     printf(
         "\n  --show [int]        \tSpecify how many rows on the table will be "
         "shown, truncating the rest. Defaults to showing all rows.");
+    printf(
+        "\n  --historical [name] \tPerform a historical account of a single "
+        "application by name, showing data usage in blocks of a specified time "
+        "gap, such as days");
 }
 
 int parse_args(int argc, char **argv, struct args *args) {
@@ -56,9 +60,10 @@ int parse_args(int argc, char **argv, struct args *args) {
     args->debug = false;
     args->verbose = false;
     args->interval = 5;
-    args->time = {0, 0, 0};
+    args->time = {0, 0, 0, 0};
     args->sort = RX_DESC;
     args->rows_shown = -1;
+    args->historical = "";
 
     bool timeframe_set = false;
 
@@ -210,11 +215,23 @@ int parse_args(int argc, char **argv, struct args *args) {
                 exit(1);
             }
         }
+
+        if (arg == "--historical") {
+            if (it + 1 != end) {
+                args->historical = *(it + 1);
+            } else {
+                fprintf(stderr,
+                        "The historical argument (--historical) requires "
+                        "a string specifing the name of the application to do "
+                        "the historical account for.\n");
+                exit(1);
+            }
+        }
     }
 
     if (!timeframe_set) {
         /* If days, hours, or minutes have not been set, default to 1 day */
-        args->time = {1, 0, 0};
+        args->time = {1, 0, 0, 0};
     }
 
     return 0;

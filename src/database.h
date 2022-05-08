@@ -16,6 +16,11 @@ struct timeframe {
     int seconds;
 };
 
+time_t timestamp_from_timeframe(const time_t &base,
+                                const struct timeframe &time);
+
+time_t timespan_from_timeframe(const struct timeframe &time);
+
 /* sqlite3 object to interact with database. This will not be touched outside of
  * db_* functions. */
 extern sqlite3 *db;
@@ -59,4 +64,13 @@ void db_update_loop();
 void db_fetch_usage_over_timeframe(
     std::unordered_map<std::string, struct application> &apps,
     struct timeframe time);
+
+/* Get all sessions for a single application from the database between start
+ * time and end time, then divide and accumulate the session date into a
+ * specified time gap, such as day, week, month, etc. */
+void db_fetch_app_usage_between_timeframes(
+    std::vector<struct application> &time_gaps, std::vector<time_t> &time_edges,
+    std::string &name, struct timeframe start, struct timeframe end,
+    struct timeframe gap);
+
 #endif

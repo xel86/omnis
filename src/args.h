@@ -1,6 +1,8 @@
 #ifndef ARGS_H
 #define ARGS_H
 
+#include <string>
+
 #include "database.h"
 
 /* Sort preferences for tables, ASC for Ascending, DESC for Descending */
@@ -23,6 +25,7 @@ struct args {
     struct timeframe time; /* timeframe to sum application data usage for */
     enum sort sort;        /* Sort preference for table */
     int rows_shown; /* Amount of rows shown on the tabls, truncating rest. */
+    std::string historical; /* name of app to do historical account */
 };
 
 void print_help();

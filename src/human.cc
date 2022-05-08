@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <ctime>
 
 const char *units[] = {"B", "KB", "MB", "GB", "TB", "PB"};
 
@@ -26,5 +27,13 @@ char *bytes_to_human(char *str, double bytes) {
     }
 
     sprintf(str, "%.2f %s", bytes, units[i]);
+    return str;
+}
+
+char *timestamp_to_human(char *str, time_t time) {
+    struct tm ts;
+    ts = *localtime(&time);
+    strftime(str, sizeof(str), "%m/%d", &ts);
+
     return str;
 }

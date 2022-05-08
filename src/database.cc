@@ -24,6 +24,23 @@ time_t time_cursor;
 /* 5 second interval to deposit into database */
 int update_interval = 5;
 
+time_t timestamp_from_timeframe(const time_t &base,
+                                const struct timeframe &time) {
+    time_t days = time.days * 24 * 60 * 60;
+    time_t hours = time.hours * 60 * 60;
+    time_t minutes = time.minutes * 60;
+
+    return base - (days + hours + minutes);
+}
+
+time_t timespan_from_timeframe(const struct timeframe &time) {
+    time_t days = time.days * 24 * 60 * 60;
+    time_t hours = time.hours * 60 * 60;
+    time_t minutes = time.minutes * 60;
+
+    return days + hours + minutes;
+}
+
 /* I wrote this for non-root before realizing it will be running as root. */
 int user_get_or_create_db_path(std::string *path) {
     auto db_path = std::filesystem::path{std::getenv("XDG_CONFIG_HOME")};
@@ -295,11 +312,7 @@ void db_update_loop() {
 void db_fetch_usage_over_timeframe(
     std::unordered_map<std::string, struct application> &apps,
     struct timeframe time) {
-    time_t days = time.days * 24 * 60 * 60;
-    time_t hours = time.hours * 60 * 60;
-    time_t minutes = time.minutes * 60;
-
-    time_t start_time = std::time(NULL) - days - hours - minutes;
+    time_t start_time = timestamp_from_timeframe(std::time(NULL), time);
 
     /* Flip application_ids map loaded in from db_load() so that id is the key
      * and the name is the value instead */
@@ -339,6 +352,85 @@ void db_fetch_usage_over_timeframe(
 
             apps[new_app.name] = new_app;
         }
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+void db_fetch_app_usage_between_timeframes(
+    std::vector<struct application> &time_gaps, std::vector<time_t> &time_edges,
+    std::string &name, struct timeframe start, struct timeframe end,
+    struct timeframe gap) {
+    time_t start_t = timestamp_from_timeframe(std::time(NULL), start);
+    time_t end_t = timestamp_from_timeframe(std::time(NULL), end);
+    time_t gap_t = timespan_from_timeframe(gap);
+
+    if (start_t > end_t) {
+        fprintf(g_log,
+                "db_fetch_app_usage_between_timeframes: Can't have a start "
+                "date further in time than the end date.");
+        std::exit(1);
+    }
+
+    /* Calculate number of time gaps (days, months, etc.) that will be populated
+     * while iterating between start and end time */
+    int n_gaps = (end_t - start_t) / gap_t;
+    if ((start_t - end_t) % gap_t) n_gaps++;
+
+    std::unordered_map<int, std::string> app_ids;
+    for (auto i = application_ids.begin(); i != application_ids.end(); ++i)
+        app_ids[i->second] = i->first;
+
+    auto found = application_ids.find(name);
+    if (found == application_ids.end()) {
+        return;
+    }
+    int app_id = found->second;
+
+    /* Create two parallel arrays for each time gap, one that holds the actual
+     * data usage accumulation of the application for that time gap, and another
+     * for holding the actual unix timestamp edges for each time gap boundry. */
+    time_gaps =
+        std::vector<struct application>(n_gaps, application(name.c_str()));
+
+    time_edges = std::vector<time_t>(n_gaps);
+    time_t last = start_t;
+    for (int i = 0; i < n_gaps; i++) {
+        time_edges[i] = last + gap_t;
+        last = time_edges[i];
+    }
+
+    /* If the historical command line argument query, truncate it too 15
+     * characters since this is the length of the application names in the
+     * database */
+    if (name.length() > 15) {
+        name.resize(15);
+    }
+
+    char sql[256];
+    sqlite3_stmt *stmt;
+
+    snprintf(sql, 256,
+             "SELECT * FROM Session WHERE (start BETWEEN %ld AND %ld) AND "
+             "applicationId=%d;",
+             start_t, end_t, app_id);
+
+    sqlite3_prepare_v3(db, sql, strlen(sql), 0, &stmt, NULL);
+    time_t time_edge = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        time_t start = sqlite3_column_int64(stmt, 0);
+        while (start > time_edges[time_edge]) {
+            time_edge++;
+        }
+
+        struct application &time_gap = time_gaps[time_edge];
+
+        time_gap.pkt_tx += sqlite3_column_int64(stmt, 3);
+        time_gap.pkt_rx += sqlite3_column_int64(stmt, 4);
+        time_gap.pkt_tx_c += sqlite3_column_int(stmt, 5);
+        time_gap.pkt_rx_c += sqlite3_column_int(stmt, 6);
+        time_gap.pkt_tcp += sqlite3_column_int(stmt, 7);
+        time_gap.pkt_udp += sqlite3_column_int(stmt, 8);
     }
 
     sqlite3_finalize(stmt);

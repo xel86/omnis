@@ -86,8 +86,19 @@ int main(int argc, char **argv) {
         g_log = stdout;
         db_load();
 
+        if (!g_args.historical.empty()) {
+            /* Defaults for now, historical account will be from g_args.time in
+             * the past till the present time, with gaps of 1 day. */
+            struct timeframe end = {0, 0, 0, 0};
+            struct timeframe gap = {1, 0, 0, 0};
+
+            display_app_usage_table(g_args.historical, g_args.time, end, gap);
+
+            return 0;
+        }
+
         display_usage_table(g_args.time, g_args.sort, g_args.rows_shown);
-        exit(1);
+        return 0;
     }
 
     daemonize();

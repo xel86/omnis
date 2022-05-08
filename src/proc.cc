@@ -234,18 +234,7 @@ void handle_pid_dir(const char *pid) {
             if (!has_socket && new_app) {
                 has_socket = 1;
 
-                app = std::make_shared<struct application>();
-                app->id = 0;
-                app->pkt_rx = 0;
-                app->pkt_tx = 0;
-                app->pkt_rx_c = 0;
-                app->pkt_tx_c = 0;
-                app->pkt_tcp = 0;
-                app->pkt_udp = 0;
-                app->pid = string_to_int(pid);
-                strncpy(app->name, comm, 16);
-                app->start_time = std::time(NULL);
-
+                app = std::make_shared<struct application>(comm);
                 db_insert_application(&(*app));
 
                 g_application_map[comm] = app;
